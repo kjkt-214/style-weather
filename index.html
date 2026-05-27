@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StyleWeather - パーソナルスタイリスト</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-shirt"></i>
+                <span>StyleWeather</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-target="home"><i class="fa-solid fa-house"></i> ホーム</li>
+                <li data-target="closet"><i class="fa-solid fa-door-closed"></i> クローゼット</li>
+                <li data-target="shopping"><i class="fa-solid fa-bag-shopping"></i> 買い足し提案</li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            
+            <!-- HOME VIEW: Outfit Generator -->
+            <section id="home" class="view-section active">
+                <header class="section-header">
+                    <h1>今日のコーディネート</h1>
+                    <p>コンテキストに合わせて最適な服を提案します</p>
+                </header>
+
+                <div class="context-cards">
+                    <!-- Weather Context -->
+                    <div class="card context-card">
+                        <h3><i class="fa-solid fa-cloud-sun"></i> 天気・気温</h3>
+                        <div class="input-group">
+                            <label>気温 (℃)</label>
+                            <input type="number" id="temp-input" value="20" min="-10" max="40">
+                        </div>
+                        <div class="input-group">
+                            <label>天気</label>
+                            <select id="weather-select">
+                                <option value="sunny">晴れ</option>
+                                <option value="cloudy">くもり</option>
+                                <option value="rainy">雨</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Location Context -->
+                    <div class="card context-card">
+                        <h3><i class="fa-solid fa-map-location-dot"></i> 行く場所</h3>
+                        <div class="input-group">
+                            <label>シーン</label>
+                            <select id="location-select">
+                                <optgroup label="日常・お出かけ">
+                                    <option value="convenience">近所のコンビニ・スーパー (ワンマイルウェア)</option>
+                                    <option value="casual" selected>街歩き・ショッピング (カジュアル)</option>
+                                    <option value="cafe">カフェ・映画館 (リラックス)</option>
+                                </optgroup>
+                                <optgroup label="学校・仕事">
+                                    <option value="school">学校・大学 (通学)</option>
+                                    <option value="office">オフィス・仕事 (オフィスカジュアル)</option>
+                                </optgroup>
+                                <optgroup label="アクティブ">
+                                    <option value="outdoor">アウトドア・キャンプ (アクティブ)</option>
+                                    <option value="sports">スポーツジム・ランニング (スポーティ)</option>
+                                </optgroup>
+                                <optgroup label="特別な予定">
+                                    <option value="formal">高級レストラン・ホテル (フォーマル)</option>
+                                    <option value="party">パーティー・二次会 (ドレッシー)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Companion Context -->
+                    <div class="card context-card">
+                        <h3><i class="fa-solid fa-user-group"></i> 会う相手</h3>
+                        <div class="input-group">
+                            <label>相手</label>
+                            <select id="companion-select">
+                                <option value="friends">友人</option>
+                                <option value="date">恋人・デート</option>
+                                <option value="boss">上司・取引先</option>
+                                <option value="alone">一人</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-container">
+                    <button id="generate-btn" class="primary-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> コーデを提案する</button>
+                </div>
+
+                <!-- Result Section -->
+                <div id="outfit-result" class="card result-card hidden">
+                    <h2><i class="fa-solid fa-star"></i> おすすめのコーディネート</h2>
+                    <div class="outfit-grid" id="outfit-grid">
+                        <!-- Items injected by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- CLOSET VIEW -->
+            <section id="closet" class="view-section">
+                <header class="section-header">
+                    <h1>マイクローゼット</h1>
+                    <p>手持ちの服を管理・登録します</p>
+                </header>
+
+                <div class="card form-card">
+                    <h3>新しい服を追加</h3>
+                    <form id="add-cloth-form" class="inline-form">
+                        <select id="new-category" required>
+                            <option value="" disabled selected>カテゴリ</option>
+                            <option value="tops">トップス</option>
+                            <option value="bottoms">ボトムス</option>
+                            <option value="outer">アウター</option>
+                            <option value="shoes">シューズ</option>
+                        </select>
+                        <input type="text" id="new-name" placeholder="アイテム名 (例: 白シャツ)" required>
+                        <select id="new-formality" required>
+                            <option value="" disabled selected>フォーマル度</option>
+                            <option value="1">カジュアル</option>
+                            <option value="2">きれいめ</option>
+                            <option value="3">フォーマル</option>
+                        </select>
+                        <select id="new-warmth" required>
+                            <option value="" disabled selected>暖かさ</option>
+                            <option value="1">涼しい (夏向け)</option>
+                            <option value="2">普通 (春秋向け)</option>
+                            <option value="3">暖かい (冬向け)</option>
+                        </select>
+                        <button type="submit" class="secondary-btn">追加</button>
+                    </form>
+                </div>
+
+                <div class="closet-grid" id="closet-grid">
+                    <!-- Inventory items injected by JS -->
+                </div>
+            </section>
+
+            <!-- SHOPPING VIEW -->
+            <section id="shopping" class="view-section">
+                <header class="section-header">
+                    <h1>買い足し提案</h1>
+                    <p>クローゼットの傾向から、次に買うべきアイテムを分析します</p>
+                </header>
+
+                <div class="card shopping-analysis-card">
+                    <div class="analysis-header">
+                        <i class="fa-solid fa-robot"></i>
+                        <h2>AIクローゼット診断</h2>
+                    </div>
+                    <div id="shopping-suggestions" class="suggestions-list">
+                        <!-- Suggestions injected by JS -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
