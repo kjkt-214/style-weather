@@ -1,23 +1,24 @@
 :root {
-    --bg-dark: #0f1115;
-    --bg-panel: #1a1d24;
-    --bg-card: rgba(255, 255, 255, 0.03);
+    --bg-dark: #050608;              /* ディープなストリートブラック */
+    --bg-panel: #0c0e12;             /* 高級感のあるダークグレー */
+    --bg-card: rgba(255, 255, 255, 0.02);
     
-    --text-primary: #f3f4f6;
-    --text-secondary: #9ca3af;
+    --text-primary: #ffffff;         /* KEIJUの好むクリーンホワイト */
+    --text-secondary: #8f96a3;       /* サブはアッシュグレー */
     
-    --accent-primary: #6366f1;
-    --accent-hover: #4f46e5;
-    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    --accent-primary: #8aa282;       /* Stone Island風セージグリーン */
+    --accent-hover: #758c6e;
+    --accent-gradient: linear-gradient(135deg, #ffffff 0%, #8aa282 100%);
     
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-radius-lg: 16px;
-    --border-radius-md: 12px;
+    --border-color: rgba(255, 255, 255, 0.07); /* より細く繊細なボーダー */
+    --border-radius-lg: 0px;        /* エッジを効かせるため角丸をゼロ(0px)にしシャープに */
+    --border-radius-md: 0px;
     
-    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.2);
-    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.2);
+    --shadow-glow: 0 0 20px rgba(138, 162, 130, 0.15);
+    --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.5);
     
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --font-heading: 'Space Grotesk', sans-serif;
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 * {
@@ -27,11 +28,18 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', 'Space Grotesk', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-primary);
     line-height: 1.6;
     overflow-x: hidden;
+    letter-spacing: 0.03em;
+}
+
+h1, h2, h3, h4, .logo {
+    font-family: var(--font-heading);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 /* Layout */
@@ -55,17 +63,16 @@ body {
     align-items: center;
     gap: 12px;
     padding: 0 2rem;
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 700;
     margin-bottom: 3rem;
-    background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1.5rem;
 }
 
 .logo i {
     color: var(--accent-primary);
-    -webkit-text-fill-color: var(--accent-primary);
 }
 
 .nav-links {
@@ -199,38 +206,45 @@ input:focus, select:focus {
 }
 
 .primary-btn {
-    background: var(--accent-gradient);
-    color: white;
-    border: none;
-    padding: 1rem 3rem;
-    font-size: 1.2rem;
+    background: #ffffff;
+    color: #000000;
+    border: 1px solid #ffffff;
+    padding: 0.9rem 2.5rem;
+    font-size: 1rem;
     font-weight: 600;
-    border-radius: 30px;
+    border-radius: var(--border-radius-md);
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    box-shadow: var(--shadow-glow);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
 }
 
 .primary-btn:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+    background: transparent;
+    color: #ffffff;
+    transform: none;
+    box-shadow: none;
 }
 
 .secondary-btn {
-    background: var(--bg-card);
+    background: transparent;
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     padding: 0.8rem 1.5rem;
     border-radius: var(--border-radius-md);
     cursor: pointer;
     transition: var(--transition);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
 .secondary-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
 }
 
 .hidden {
@@ -420,5 +434,397 @@ input:focus, select:focus {
     }
     .main-content {
         padding: 1.5rem;
+    }
+}
+
+/* Outfit Rating & Wear Action */
+.outfit-actions {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.rating-select {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.1rem;
+}
+
+.stars {
+    display: flex;
+    gap: 8px;
+}
+
+.stars i {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.stars i:hover,
+.stars i.active {
+    color: #fbbf24; /* Amber star color */
+    transform: scale(1.1);
+}
+
+/* History & Laundry Section Layout */
+.history-grid-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .history-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card-header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.card-header-with-action h3 {
+    margin-bottom: 0 !important;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.85rem !important;
+}
+
+/* Laundry List */
+.laundry-list, .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.laundry-item {
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: var(--transition);
+}
+
+.laundry-item:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.laundry-item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.laundry-item-info i {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.laundry-item-info h4 {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.laundry-item-info .category {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* History List */
+.history-item {
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.history-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.5rem;
+}
+
+.history-item-date {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.history-item-stars {
+    color: #fbbf24;
+    font-size: 0.9rem;
+}
+
+.history-item-clothes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.history-item-cloth-tag {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.history-item-cloth-tag i {
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+}
+
+/* Closet status adjustments */
+.cloth-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.status-badge.laundry {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-badge.recent {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.cloth-card.laundry {
+    opacity: 0.6;
+}
+
+.cloth-card.recent {
+    opacity: 0.85;
+}
+
+.cloth-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-top: auto; /* Push actions to the bottom of the card */
+}
+
+.cloth-card-actions button {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.edit-delete-btns {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+}
+
+.edit-delete-btns button {
+    flex: 1;
+    padding: 0.5rem !important;
+}
+
+.edit-btn:hover {
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.delete-btn:hover {
+    color: #ef4444;
+    border-color: #ef4444;
+}
+
+/* Inline Edit Form in Card */
+.card-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+}
+
+.card-edit-form input,
+.card-edit-form select {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    background-color: var(--bg-dark);
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 100%;
+    outline: none;
+}
+
+.card-edit-form input:focus,
+.card-edit-form select:focus {
+    border-color: var(--accent-primary);
+}
+
+.edit-form-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.edit-form-actions button {
+    flex: 1;
+    font-size: 0.8rem !important;
+    padding: 0.5rem !important;
+    justify-content: center;
+}
+
+/* Hero Section styling */
+.hero-section {
+    position: relative;
+    width: 100%;
+    height: 350px;
+    margin-bottom: 3rem;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.hero-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center 30%;
+    filter: brightness(0.65) contrast(1.1);
+    transform: scale(1.02);
+    transition: transform 10s ease-out;
+}
+
+.hero-section:hover .hero-image {
+    transform: scale(1.08);
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(5, 6, 8, 0.95) 0%, rgba(5, 6, 8, 0.6) 40%, rgba(5, 6, 8, 0) 100%);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem;
+    max-width: 60%;
+}
+
+.hero-badge {
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    letter-spacing: 0.25em;
+    color: var(--accent-primary);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.hero-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 480px;
+}
+
+/* Glassmorphism card premium overrides */
+.card {
+    background: rgba(12, 14, 18, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+/* Scrollbar styling for high-end feel */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
+}
+
+@media (max-width: 768px) {
+    .hero-section {
+        height: 250px;
+    }
+    .hero-overlay {
+        background: linear-gradient(to top, rgba(5, 6, 8, 0.95) 0%, rgba(5, 6, 8, 0.5) 100%);
+    }
+    .hero-content {
+        max-width: 100%;
+        padding: 1.5rem;
+        justify-content: flex-end;
+    }
+    .hero-title {
+        font-size: 1.8rem;
     }
 }

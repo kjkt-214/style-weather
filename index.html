@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StyleWeather - パーソナルスタイリスト</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -20,6 +20,7 @@
             <ul class="nav-links">
                 <li class="active" data-target="home"><i class="fa-solid fa-house"></i> ホーム</li>
                 <li data-target="closet"><i class="fa-solid fa-door-closed"></i> クローゼット</li>
+                <li data-target="history"><i class="fa-solid fa-clock-rotate-left"></i> 履歴・洗濯</li>
                 <li data-target="shopping"><i class="fa-solid fa-bag-shopping"></i> 買い足し提案</li>
             </ul>
         </nav>
@@ -29,8 +30,16 @@
             
             <!-- HOME VIEW: Outfit Generator -->
             <section id="home" class="view-section active">
+                <div class="hero-section">
+                    <div class="hero-image" style="background-image: url('keiju_nito_style.jpg');"></div>
+                    <div class="hero-overlay"></div>
+                    <div class="hero-content">
+                        <h1 class="hero-title">Reach Out Rich</h1>
+                    </div>
+                </div>
+
                 <header class="section-header">
-                    <h1>今日のコーディネート</h1>
+                    <h2>今日のコーディネート</h2>
                     <p>コンテキストに合わせて最適な服を提案します</p>
                 </header>
 
@@ -104,6 +113,19 @@
                     <div class="outfit-grid" id="outfit-grid">
                         <!-- Items injected by JS -->
                     </div>
+                    <div class="outfit-actions">
+                        <div class="rating-select">
+                            <span>今日のコーデを評価:</span>
+                            <div class="stars" id="rating-stars">
+                                <i class="fa-regular fa-star" data-value="1"></i>
+                                <i class="fa-regular fa-star" data-value="2"></i>
+                                <i class="fa-regular fa-star" data-value="3"></i>
+                                <i class="fa-regular fa-star" data-value="4"></i>
+                                <i class="fa-regular fa-star" data-value="5"></i>
+                            </div>
+                        </div>
+                        <button id="wear-btn" class="primary-btn" disabled><i class="fa-solid fa-check"></i> このコーデを着用して洗濯かごへ</button>
+                    </div>
                 </div>
             </section>
 
@@ -143,6 +165,35 @@
 
                 <div class="closet-grid" id="closet-grid">
                     <!-- Inventory items injected by JS -->
+                </div>
+            </section>
+
+            <!-- HISTORY & LAUNDRY VIEW -->
+            <section id="history" class="view-section">
+                <header class="section-header">
+                    <h1>履歴・洗濯管理</h1>
+                    <p>最近の着用履歴と洗濯かごの状態を確認・管理します</p>
+                </header>
+
+                <div class="history-grid-container">
+                    <!-- Laundry Basket -->
+                    <div class="card laundry-card">
+                        <div class="card-header-with-action">
+                            <h3><i class="fa-solid fa-soap"></i> 洗濯かご</h3>
+                            <button id="wash-all-btn" class="secondary-btn btn-sm"><i class="fa-solid fa-rotate"></i> すべて洗濯完了</button>
+                        </div>
+                        <div id="laundry-list" class="laundry-list">
+                            <!-- Laundry items injected by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Wear History -->
+                    <div class="card history-card">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> 着用記録 (最近3日間は提案から除外)</h3>
+                        <div id="history-list" class="history-list">
+                            <!-- History items injected by JS -->
+                        </div>
+                    </div>
                 </div>
             </section>
 
