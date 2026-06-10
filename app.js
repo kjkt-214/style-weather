@@ -1,3 +1,29 @@
+// Firebase configuration (Placeholder for user project)
+const firebaseConfig = {
+    apiKey: "AIzaSyDummyKeyForInitializationOnly",
+    authDomain: "style-weather-dummy.firebaseapp.com",
+    projectId: "style-weather-dummy",
+    storageBucket: "style-weather-dummy.appspot.com",
+    messagingSenderId: "1234567890",
+    appId: "1:1234567890:web:abcdef123456"
+};
+
+let auth, db;
+let isFirebaseInitialized = false;
+
+try {
+    if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        isFirebaseInitialized = true;
+    } else {
+        console.warn("Firebase SDK not loaded. Running in offline localStorage mode.");
+    }
+} catch (e) {
+    console.warn("Firebase failed to initialize. Running in offline localStorage mode.", e);
+}
+
 // Default initial inventory data
 const DEFAULT_INVENTORY = [
     { id: 1, name: 'BoTT ロゴTシャツ (白)', category: 'tops', formality: 1, warmth: 1, icon: 'fa-shirt', status: 'clean' },
@@ -24,12 +50,40 @@ if (!inventory || inventory.length === 0 || savedVersion !== INVENTORY_VERSION) 
     wearHistory = [];
 }
 
-function saveInventory() {
+function saveInventoryLocal() {
     localStorage.setItem('sw_inventory', JSON.stringify(inventory));
 }
 
-function saveHistory() {
+function saveHistoryLocal() {
     localStorage.setItem('sw_history', JSON.stringify(wearHistory));
+}
+
+async function saveInventory() {
+    saveInventoryLocal();
+    if (isFirebaseInitialized && currentUser) {
+        try {
+            await db.collection("users").doc(currentUser.uid).update({
+                inventory: inventory,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error("Failed to update inventory to Firestore:", e);
+        }
+    }
+}
+
+async function saveHistory() {
+    saveHistoryLocal();
+    if (isFirebaseInitialized && currentUser) {
+        try {
+            await db.collection("users").doc(currentUser.uid).update({
+                wearHistory: wearHistory,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error("Failed to update history to Firestore:", e);
+        }
+    }
 }
 
 // Helper: Get Icon based on category
@@ -586,4 +640,225 @@ function analyzeShopping() {
 
 // Initial render
 renderCloset();
+
+// Firebase Synchronization & Auth Control Logic
+let currentUser = null;
+
+function loadLocalData() {
+    inventory = JSON.parse(localStorage.getItem('sw_inventory'));
+    if (!inventory || inventory.length === 0) {
+        inventory = DEFAULT_INVENTORY;
+        localStorage.setItem('sw_inventory', JSON.stringify(inventory));
+    }
+    wearHistory = JSON.parse(localStorage.getItem('sw_history')) || [];
+}
+
+async function syncDataWithCloud(uid) {
+    if (!isFirebaseInitialized) return;
+    try {
+        const userDocRef = db.collection("users").doc(uid);
+        const userDocSnap = await userDocRef.get();
+
+        if (userDocSnap.exists) {
+            const cloudData = userDocSnap.data();
+            const cloudInventory = cloudData.inventory || [];
+            const cloudHistory = cloudData.wearHistory || [];
+
+            // マージ処理
+            // 1. Inventoryのマージ (IDで紐付け)
+            const mergedInventory = [...cloudInventory];
+            inventory.forEach(localItem => {
+                if (!mergedInventory.some(cloudItem => cloudItem.id === localItem.id)) {
+                    mergedInventory.push(localItem); // ローカルにしかないアイテムを追加
+                }
+            });
+            inventory = mergedInventory;
+
+            // 2. WearHistoryのマージ (タイムスタンプ等のIDで重複排除)
+            const mergedHistory = [...cloudHistory];
+            wearHistory.forEach(localRecord => {
+                if (!mergedHistory.some(cloudRecord => cloudRecord.id === localRecord.id)) {
+                    mergedHistory.push(localRecord);
+                }
+            });
+            // 最新順に並び替え
+            mergedHistory.sort((a, b) => b.id - a.id);
+            wearHistory = mergedHistory;
+
+            // ローカルストレージに保存
+            saveInventoryLocal();
+            saveHistoryLocal();
+
+            // クラウドに書き戻し（最新マージ状態を両者で共有）
+            await userDocRef.set({
+                inventory: inventory,
+                wearHistory: wearHistory,
+                updatedAt: new Date().toISOString()
+            });
+
+        } else {
+            // クラウドにまだデータがない＝新規登録などの場合
+            // ローカルにあるデータをそのままクラウドへアップロード
+            await userDocRef.set({
+                inventory: inventory,
+                wearHistory: wearHistory,
+                updatedAt: new Date().toISOString()
+            });
+        }
+    } catch (e) {
+        console.error("Failed to sync data with Firebase:", e);
+    }
+}
+
+// 認証状態の変更リスナー
+if (isFirebaseInitialized) {
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            currentUser = user;
+            showAuthenticatedUI(user.email);
+            await syncDataWithCloud(user.uid);
+        } else {
+            currentUser = null;
+            showUnauthenticatedUI();
+            loadLocalData();
+        }
+        renderCloset();
+        if (document.getElementById('history').classList.contains('active')) {
+            renderHistoryView();
+        }
+    });
+}
+
+// モーダル表示とログイン処理のUI制御
+const loginModal = document.getElementById('login-modal');
+const openLoginBtn = document.getElementById('open-login-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const loginForm = document.getElementById('login-form');
+const toggleAuthModeBtn = document.getElementById('toggle-auth-mode-btn');
+const modalTitle = document.getElementById('modal-title');
+const authSubmitBtn = document.getElementById('auth-submit-btn');
+const toggleAuthModeText = document.getElementById('toggle-auth-mode-text');
+const authErrorMsg = document.getElementById('auth-error-msg');
+const logoutBtn = document.getElementById('logout-btn');
+
+let isSignUpMode = false;
+
+// UI Toggle Functions
+function showAuthenticatedUI(email) {
+    document.querySelector('.account-unauthenticated').classList.add('hidden');
+    document.querySelector('.account-authenticated').classList.remove('hidden');
+    document.getElementById('user-email').textContent = email;
+}
+
+// Toggle unauthenticated
+function showUnauthenticatedUI() {
+    document.querySelector('.account-unauthenticated').classList.remove('hidden');
+    document.querySelector('.account-authenticated').classList.add('hidden');
+    document.getElementById('user-email').textContent = '';
+}
+
+// Event Listeners for Modal
+if (openLoginBtn) {
+    openLoginBtn.addEventListener('click', () => {
+        loginModal.classList.remove('hidden');
+        authErrorMsg.classList.add('hidden');
+        loginForm.reset();
+        setAuthMode(false); // default to login
+    });
+}
+
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => {
+        loginModal.classList.add('hidden');
+    });
+}
+
+// Close modal on background click
+if (loginModal) {
+    loginModal.addEventListener('click', (e) => {
+        if (e.target === loginModal) {
+            loginModal.classList.add('hidden');
+        }
+    });
+}
+
+if (toggleAuthModeBtn) {
+    toggleAuthModeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        setAuthMode(!isSignUpMode);
+    });
+}
+
+function setAuthMode(signUp) {
+    isSignUpMode = signUp;
+    if (isSignUpMode) {
+        modalTitle.textContent = 'アカウント新規登録';
+        authSubmitBtn.textContent = '新規登録';
+        toggleAuthModeText.textContent = 'すでにアカウントをお持ちですか？';
+        toggleAuthModeBtn.textContent = 'ログイン';
+    } else {
+        modalTitle.textContent = 'ログイン';
+        authSubmitBtn.textContent = 'ログイン';
+        toggleAuthModeText.textContent = 'アカウントをお持ちでないですか？';
+        toggleAuthModeBtn.textContent = '新規登録';
+    }
+}
+
+// Login/Signup Submit
+if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        authErrorMsg.classList.add('hidden');
+        
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        if (!isFirebaseInitialized) {
+            authErrorMsg.textContent = 'Firebaseが正しく初期化されていないため、現在ログイン機能は利用できません。';
+            authErrorMsg.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.textContent = isSignUpMode ? '登録中...' : 'ログイン中...';
+            
+            if (isSignUpMode) {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } else {
+                await auth.signInWithEmailAndPassword(email, password);
+            }
+            loginModal.classList.add('hidden');
+        } catch (error) {
+            console.error("Auth action failed:", error);
+            let errorText = '認証に失敗しました。';
+            if (error.code === 'auth/invalid-credential') {
+                errorText = 'メールアドレスまたはパスワードが正しくありません。';
+            } else if (error.code === 'auth/email-already-in-use') {
+                errorText = 'このメールアドレスは既に登録されています。';
+            } else if (error.code === 'auth/weak-password') {
+                errorText = 'パスワードは6文字以上で設定してください。';
+            } else if (error.code === 'auth/invalid-email') {
+                errorText = '無効なメールアドレスです。';
+            }
+            authErrorMsg.textContent = errorText;
+            authErrorMsg.classList.remove('hidden');
+        } finally {
+            authSubmitBtn.disabled = false;
+            authSubmitBtn.textContent = isSignUpMode ? '新規登録' : 'ログイン';
+        }
+    });
+}
+
+// Logout Action
+if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+        if (!isFirebaseInitialized) return;
+        try {
+            await auth.signOut();
+        } catch (e) {
+            console.error("Logout failed:", e);
+        }
+    });
+}
 

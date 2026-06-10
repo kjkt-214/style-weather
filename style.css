@@ -828,3 +828,165 @@ input:focus, select:focus {
         font-size: 1.8rem;
     }
 }
+
+/* Sidebar Account Section */
+.sidebar-account {
+    margin-top: auto;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.sidebar-account button {
+    width: 100%;
+    font-size: 0.85rem !important;
+}
+
+.account-authenticated {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+}
+
+.user-info i {
+    color: var(--accent-primary);
+}
+
+.user-email-text {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 1;
+    transition: var(--transition);
+}
+
+/* Modal Card */
+.modal-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem !important;
+    background: rgba(12, 14, 18, 0.85) !important;
+    border: 1px solid var(--border-color) !important;
+    position: relative;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8) !important;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.modal-header h3 {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: var(--transition);
+    width: auto !important;
+    padding: 0 !important;
+}
+
+.close-btn:hover {
+    color: #ffffff;
+}
+
+/* Modal forms */
+#login-form .input-group {
+    margin-bottom: 1.5rem;
+}
+
+#login-form .modal-actions {
+    margin-top: 2rem;
+}
+
+#login-form button[type="submit"] {
+    width: 100%;
+}
+
+.modal-toggle {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.modal-toggle a {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 5px;
+    border-bottom: 1px solid var(--text-primary);
+    transition: var(--transition);
+}
+
+.modal-toggle a:hover {
+    color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+/* Error Message */
+.error-msg {
+    color: #ef4444;
+    font-size: 0.85rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Responsive adjustment for Sidebar Account */
+@media (max-width: 768px) {
+    .sidebar {
+        flex-wrap: wrap;
+    }
+    .sidebar-account {
+        width: auto;
+        border-top: none;
+        border-left: 1px solid var(--border-color);
+        padding: 0.5rem 1rem;
+        margin-top: 0;
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+    }
+    .sidebar-account button {
+        padding: 0.5rem 1rem !important;
+    }
+    .account-authenticated {
+        flex-direction: row;
+        align-items: center;
+        gap: 15px;
+    }
+}

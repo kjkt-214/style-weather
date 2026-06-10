@@ -23,6 +23,20 @@
                 <li data-target="history"><i class="fa-solid fa-clock-rotate-left"></i> 履歴・洗濯</li>
                 <li data-target="shopping"><i class="fa-solid fa-bag-shopping"></i> 買い足し提案</li>
             </ul>
+            
+            <!-- Account Section in Sidebar -->
+            <div class="sidebar-account" id="sidebar-account">
+                <div class="account-unauthenticated">
+                    <button id="open-login-btn" class="secondary-btn btn-sm"><i class="fa-solid fa-right-to-bracket"></i> ログイン / 同期</button>
+                </div>
+                <div class="account-authenticated hidden">
+                    <div class="user-info">
+                        <i class="fa-solid fa-user"></i>
+                        <span id="user-email" class="user-email-text"></span>
+                    </div>
+                    <button id="logout-btn" class="secondary-btn btn-sm"><i class="fa-solid fa-right-from-bracket"></i> ログアウト</button>
+                </div>
+            </div>
         </nav>
 
         <!-- Main Content -->
@@ -217,6 +231,37 @@
 
         </main>
     </div>
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay hidden">
+        <div class="modal-card card">
+            <div class="modal-header">
+                <h3 id="modal-title">ログイン</h3>
+                <button id="close-modal-btn" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="login-email">メールアドレス</label>
+                    <input type="email" id="login-email" required placeholder="example@email.com">
+                </div>
+                <div class="input-group">
+                    <label for="login-password">パスワード</label>
+                    <input type="password" id="login-password" required minlength="6" placeholder="******">
+                </div>
+                <div id="auth-error-msg" class="error-msg hidden"></div>
+                <div class="modal-actions">
+                    <button type="submit" id="auth-submit-btn" class="primary-btn">ログイン</button>
+                </div>
+                <div class="modal-toggle">
+                    <span id="toggle-auth-mode-text">アカウントをお持ちでないですか？</span>
+                    <a href="#" id="toggle-auth-mode-btn">新規登録</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
