@@ -1150,3 +1150,50 @@ input:focus, select:focus {
     padding-left: 20px;
     color: var(--text-secondary);
 }
+
+/* Postal Code Lookup */
+.postal-lookup {
+    margin-bottom: 1.2rem;
+}
+
+.postal-input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.postal-input-row input {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.postal-status {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    padding: 6px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    font-family: var(--font-heading);
+}
+
+.postal-status.success {
+    border-left: 3px solid var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.postal-status.error {
+    border-left: 3px solid #ef4444;
+    color: #ef4444;
+}
+
+/* Weather Extremes in Simple Mode */
+#weather-extremes.simple-extremes {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: var(--font-heading);
+}
