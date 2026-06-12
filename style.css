@@ -1245,3 +1245,83 @@ input:focus, select:focus {
     background: #fff;
     border-color: #fff;
 }
+
+/* Schedule candidate list */
+.sched-candidates {
+    margin-top: 10px;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 10px;
+}
+
+.candidate-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.candidate-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.candidate-item {
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-size: 0.85rem;
+}
+
+.candidate-item:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.3);
+}
+
+.candidate-item .cand-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.candidate-item .cand-addr {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+/* Selected place display */
+.sched-selected {
+    margin-top: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--border-radius-md);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 6px;
+    transition: color 0.2s;
+    font-size: 0.9rem;
+}
+
+.icon-btn:hover {
+    color: var(--text-primary);
+}

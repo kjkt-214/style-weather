@@ -143,10 +143,23 @@
                                 <div class="input-group">
                                     <label>場所 (フリーワード)</label>
                                     <div class="search-input-group">
-                                        <input type="text" id="sched-place" placeholder="例: ディズニーランド、渋谷">
-                                        <button type="button" id="add-sched-btn" class="secondary-btn btn-sm">追加</button>
+                                        <input type="text" id="sched-place" placeholder="例: よみうりランド、ディズニーランド、渋谷">
+                                        <button type="button" id="search-sched-btn" class="secondary-btn btn-sm"><i class="fa-solid fa-magnifying-glass"></i> 検索</button>
+                                    </div>
+                                    <!-- 候補リスト（検索後に表示） -->
+                                    <div id="sched-candidates" class="sched-candidates hidden">
+                                        <p class="candidate-hint"><i class="fa-solid fa-circle-info"></i> 正しい場所をタップして選択してください</p>
+                                        <ul id="candidate-list" class="candidate-list"></ul>
+                                    </div>
+                                    <!-- 選択済み表示 -->
+                                    <div id="sched-selected" class="sched-selected hidden">
+                                        <span id="selected-place-name"></span>
+                                        <button type="button" id="clear-selection-btn" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
                                     </div>
                                 </div>
+                                <button type="button" id="add-sched-btn" class="primary-btn btn-sm" style="width:100%;margin-top:8px;" disabled>
+                                    <i class="fa-solid fa-plus"></i> このスケジュールを追加
+                                </button>
                             </div>
                             
                             <div class="schedule-list-container">

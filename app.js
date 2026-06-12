@@ -909,6 +909,21 @@ if (logoutBtn) {
 }
 
 // ---- 位置情報から天気・気温を自動取得する機能 ----
+async function reverseGeocodeCity(lat, lon) {
+    try {
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ja`,
+            { headers: { 'User-Agent': 'style-weather-app' } }
+        );
+        const data = await res.json();
+        const addr = data.address || {};
+        // 都市名の優先順位: city > town > village > county > state > 不明
+        return addr.city || addr.town || addr.village || addr.county || addr.state_district || addr.state || '不明';
+    } catch (e) {
+        return null;
+    }
+}
+
 async function fetchWeatherByCoords(lat, lon) {
     const statusEl = document.getElementById('weather-status');
     const extremesEl = document.getElementById('weather-extremes');
@@ -916,12 +931,17 @@ async function fetchWeatherByCoords(lat, lon) {
     const weatherSelect = document.getElementById('weather-select');
 
     try {
-        const weatherRes = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-            `&current=temperature_2m,weather_code` +
-            `&daily=temperature_2m_max,temperature_2m_min` +
-            `&timezone=auto`
-        );
+        // 天気取得と逆ジオコーディングを並列実行
+        const [weatherRes, cityName] = await Promise.all([
+            fetch(
+                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+                `&current=temperature_2m,weather_code` +
+                `&daily=temperature_2m_max,temperature_2m_min` +
+                `&timezone=auto`
+            ),
+            reverseGeocodeCity(lat, lon)
+        ]);
+
         const weatherData = await weatherRes.json();
         const current = weatherData.current;
         const daily = weatherData.daily;
@@ -945,8 +965,9 @@ async function fetchWeatherByCoords(lat, lon) {
             extremesEl.classList.remove('hidden');
         }
         if (statusEl) {
+            const locationLabel = cityName ? cityName : '現在地';
             statusEl.className = 'weather-status success';
-            statusEl.innerHTML = `<i class="fa-solid fa-location-dot"></i> 現在地 — ${currentTemp}℃ / ${weatherLabel}`;
+            statusEl.innerHTML = `<i class="fa-solid fa-location-dot"></i> ${locationLabel} — ${currentTemp}℃ / ${weatherLabel}`;
             statusEl.classList.remove('hidden');
         }
     } catch (e) {
@@ -1025,66 +1046,149 @@ if (tabSimple && tabSchedule) {
     });
 }
 
+// ---- スケジュール：場所検索（ステップ1: 検索→候補表示）----
+let selectedPlaceData = null; // 選択した場所データを一時保存
+
+const searchSchedBtn = document.getElementById('search-sched-btn');
+const schedPlaceInput = document.getElementById('sched-place');
+const candidatesBox = document.getElementById('sched-candidates');
+const candidateList = document.getElementById('candidate-list');
+const schedSelectedBox = document.getElementById('sched-selected');
+const selectedPlaceName = document.getElementById('selected-place-name');
+const clearSelectionBtn = document.getElementById('clear-selection-btn');
 const addSchedBtn = document.getElementById('add-sched-btn');
-if (addSchedBtn) {
-    addSchedBtn.addEventListener('click', async () => {
-        const placeInput = document.getElementById('sched-place');
-        const timeSelect = document.getElementById('sched-time');
-        const sceneSelect = document.getElementById('sched-scene');
-        
-        const placeQuery = placeInput.value.trim();
-        if (!placeQuery) {
-            alert('場所を入力してください');
+
+function resetPlaceSelection() {
+    selectedPlaceData = null;
+    if (candidatesBox) candidatesBox.classList.add('hidden');
+    if (schedSelectedBox) schedSelectedBox.classList.add('hidden');
+    if (addSchedBtn) addSchedBtn.disabled = true;
+}
+
+if (clearSelectionBtn) {
+    clearSelectionBtn.addEventListener('click', () => {
+        resetPlaceSelection();
+        if (schedPlaceInput) schedPlaceInput.value = '';
+    });
+}
+
+async function searchSchedPlace() {
+    if (!schedPlaceInput) return;
+    const query = schedPlaceInput.value.trim();
+    if (!query) {
+        alert('場所を入力してください');
+        return;
+    }
+
+    const btn = searchSchedBtn;
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    resetPlaceSelection();
+
+    try {
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?` +
+            `q=${encodeURIComponent(query)}&countrycodes=jp&format=json&limit=8&addressdetails=1&namedetails=1`,
+            { headers: { 'Accept-Language': 'ja', 'User-Agent': 'style-weather-app' } }
+        );
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            alert('場所が見つかりませんでした。\n別のキーワードをお試しください。例: 「東京ディズニーランド」「よみうりランド」');
+            btn.innerHTML = origText;
+            btn.disabled = false;
             return;
         }
-        
+
+        // 候補リストを表示
+        candidateList.innerHTML = '';
+        data.forEach(place => {
+            const name = place.namedetails?.name || place.display_name.split(',')[0];
+            // 住所の整形（都道府県+市区町村のみ表示）
+            const addr = place.address;
+            const addrParts = [addr?.state, addr?.city || addr?.town || addr?.village, addr?.suburb].filter(Boolean);
+            const addrStr = addrParts.join(' ') || place.display_name.split(',').slice(1, 3).join(',').trim();
+
+            const li = document.createElement('li');
+            li.className = 'candidate-item';
+            li.innerHTML = `
+                <div class="cand-name">${name}</div>
+                <div class="cand-addr">${addrStr}</div>
+            `;
+            li.addEventListener('click', () => {
+                // 選択確定
+                selectedPlaceData = {
+                    lat: parseFloat(place.lat),
+                    lon: parseFloat(place.lon),
+                    title: name
+                };
+                candidatesBox.classList.add('hidden');
+                selectedPlaceName.textContent = `✓ ${name}（${addrStr}）`;
+                schedSelectedBox.classList.remove('hidden');
+                addSchedBtn.disabled = false;
+            });
+            candidateList.appendChild(li);
+        });
+
+        candidatesBox.classList.remove('hidden');
+    } catch (e) {
+        console.error(e);
+        alert('検索に失敗しました');
+    }
+
+    btn.innerHTML = origText;
+    btn.disabled = false;
+}
+
+if (searchSchedBtn) {
+    searchSchedBtn.addEventListener('click', searchSchedPlace);
+}
+if (schedPlaceInput) {
+    schedPlaceInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') searchSchedPlace();
+    });
+}
+
+// ---- スケジュール：追加（ステップ2: 選択済みデータで天気取得→追加）----
+if (addSchedBtn) {
+    addSchedBtn.addEventListener('click', async () => {
+        if (!selectedPlaceData) {
+            alert('場所を検索して選択してください');
+            return;
+        }
         if (scheduleData.length >= 5) {
             alert('スケジュールは最大5件まで登録できます');
             return;
         }
 
-        const originalBtnText = addSchedBtn.innerHTML;
-        addSchedBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        const timeSelect = document.getElementById('sched-time');
+        const sceneSelect = document.getElementById('sched-scene');
+
+        const origBtnText = addSchedBtn.innerHTML;
+        addSchedBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 追加中...';
         addSchedBtn.disabled = true;
 
         try {
-            // 1. Geocoding using Nominatim (OpenStreetMap) - POI検索に優れている
-            const geoRes = await fetch(
-                `https://nominatim.openstreetmap.org/search?` +
-                `q=${encodeURIComponent(placeQuery)}&countrycodes=jp&format=json&limit=5&addressdetails=1&namedetails=1`,
-                { headers: { 'Accept-Language': 'ja', 'User-Agent': 'style-weather-app' } }
+            const { lat, lon, title } = selectedPlaceData;
+
+            // Open-Meteo APIで時間帯別天気・気温取得
+            const weatherRes = await fetch(
+                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+                `&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
             );
-            const geoData = await geoRes.json();
-            
-            if (!geoData || geoData.length === 0) {
-                alert('場所が見つかりませんでした。別のキーワードをお試しください。\n例: 「よみうりランド」「東京ディズニーランド」「渋谷駅」');
-                addSchedBtn.innerHTML = originalBtnText;
-                addSchedBtn.disabled = false;
-                return;
-            }
-            
-            const lat = parseFloat(geoData[0].lat);
-            const lon = parseFloat(geoData[0].lon);
-            // 表示名を日本語で取得（name > display_name の先頭部分）
-            const title = geoData[0].namedetails?.name || geoData[0].display_name.split(',')[0] || placeQuery;
-
-
-            // 2. Fetch Weather using Open-Meteo
-            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
             const weatherData = await weatherRes.json();
 
             const timeVal = timeSelect.value;
-            let targetHour = '15'; // Default afternoon
-            let timeLabel = '昼';
+            let targetHour = '15', timeLabel = '昼';
             if (timeVal === 'morning') { targetHour = '09'; timeLabel = '朝'; }
             if (timeVal === 'evening') { targetHour = '20'; timeLabel = '夜'; }
 
             const todayStr = new Date().toISOString().split('T')[0];
             const targetTimeStr = `${todayStr}T${targetHour}:00`;
             const hourlyIndex = weatherData.hourly.time.findIndex(t => t.startsWith(targetTimeStr));
-            
-            let temp = 20;
-            let weatherCode = 0;
+
+            let temp = 20, weatherCode = 0;
             if (hourlyIndex !== -1) {
                 temp = Math.round(weatherData.hourly.temperature_2m[hourlyIndex]);
                 weatherCode = weatherData.hourly.weather_code[hourlyIndex];
@@ -1096,53 +1200,33 @@ if (addSchedBtn) {
             const dailyMax = Math.round(weatherData.daily.temperature_2m_max[0]);
             const dailyMin = Math.round(weatherData.daily.temperature_2m_min[0]);
 
-            let weatherVal = 'sunny';
-            let weatherLabel = '晴れ';
-            if (weatherCode === 0 || weatherCode === 1) {
-                weatherVal = 'sunny'; weatherLabel = '晴れ';
-            } else if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) {
-                weatherVal = 'cloudy'; weatherLabel = 'くもり';
-            } else {
-                weatherVal = 'rainy'; weatherLabel = '雨';
-            }
-            
-            let sceneLabel = sceneSelect.options[sceneSelect.selectedIndex].text;
+            let weatherVal = 'sunny', weatherLabel = '晴れ';
+            if (weatherCode === 0 || weatherCode === 1) { weatherVal = 'sunny'; weatherLabel = '晴れ'; }
+            else if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) { weatherVal = 'cloudy'; weatherLabel = 'くもり'; }
+            else { weatherVal = 'rainy'; weatherLabel = '雨'; }
+
+            const sceneLabel = sceneSelect.options[sceneSelect.selectedIndex].text;
             let sceneFormality = 1;
-            if (['formal'].includes(sceneSelect.value)) sceneFormality = 3;
-            if (['office'].includes(sceneSelect.value)) sceneFormality = 2;
+            if (sceneSelect.value === 'formal') sceneFormality = 3;
+            if (sceneSelect.value === 'office') sceneFormality = 2;
 
-            // 3. Add to schedule
-            const newItem = {
-                id: Date.now(),
-                place: title,
-                timeVal,
-                timeLabel,
-                scene: sceneSelect.value,
-                sceneLabel,
-                sceneFormality,
-                temp,
-                dailyMax,
-                dailyMin,
-                weatherVal,
-                weatherLabel
-            };
+            scheduleData.push({ id: Date.now(), place: title, timeVal, timeLabel, scene: sceneSelect.value, sceneLabel, sceneFormality, temp, dailyMax, dailyMin, weatherVal, weatherLabel });
 
-            scheduleData.push(newItem);
-            
-            // Sort by time (morning -> afternoon -> evening)
-            const timeOrder = { 'morning': 1, 'afternoon': 2, 'evening': 3 };
+            const timeOrder = { morning: 1, afternoon: 2, evening: 3 };
             scheduleData.sort((a, b) => timeOrder[a.timeVal] - timeOrder[b.timeVal]);
 
-            placeInput.value = '';
+            // リセット
+            if (schedPlaceInput) schedPlaceInput.value = '';
+            resetPlaceSelection();
             renderScheduleList();
-            
+
         } catch (e) {
             console.error(e);
             alert('データの取得に失敗しました');
         }
 
-        addSchedBtn.innerHTML = originalBtnText;
-        addSchedBtn.disabled = false;
+        addSchedBtn.innerHTML = origBtnText;
+        addSchedBtn.disabled = true; // 追加後は再び選択が必要
     });
 }
 
