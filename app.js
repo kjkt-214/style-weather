@@ -310,24 +310,70 @@ let currentSuggestedOutfit = [];
 let selectedRating = 0;
 
 document.getElementById('generate-btn').addEventListener('click', () => {
-    const temp = parseInt(document.getElementById('temp-input').value);
-    const place = document.getElementById('location-select').value;
-    const companion = document.getElementById('companion-select').value;
-
-    // Determine Required Warmth
     let reqWarmth = 2; // default
-    if (temp >= 25) reqWarmth = 1; // Summer
-    if (temp <= 12) reqWarmth = 3; // Winter
-
-    // Determine Required Formality
     let reqFormality = 1; // Default
-    if (['formal', 'party'].includes(place)) reqFormality = 3;
-    if (['office'].includes(place)) reqFormality = 2;
-    if (['casual', 'cafe', 'school', 'outdoor', 'sports', 'convenience'].includes(place)) reqFormality = 1;
-    
+    const companion = document.getElementById('companion-select').value;
+    const adviceEl = document.getElementById('outfit-advice');
+    let adviceMsgs = [];
+
+    if (isScheduleMode && scheduleData.length > 0) {
+        // Schedule Mode Logic
+        let maxFormality = 1;
+        let minTemp = 99;
+        let maxTemp = -99;
+        let hasRain = false;
+
+        scheduleData.forEach(item => {
+            if (item.sceneFormality > maxFormality) maxFormality = item.sceneFormality;
+            if (item.temp < minTemp) minTemp = item.temp;
+            if (item.temp > maxTemp) maxTemp = item.temp;
+            if (item.weatherVal === 'rainy') hasRain = true;
+        });
+
+        reqFormality = maxFormality;
+
+        // Use average temp to determine base warmth
+        const avgTemp = (minTemp + maxTemp) / 2;
+        if (avgTemp >= 25) reqWarmth = 1;
+        else if (avgTemp <= 12) reqWarmth = 3;
+        else reqWarmth = 2;
+
+        const tempDiff = maxTemp - minTemp;
+        if (tempDiff >= 8) {
+            adviceMsgs.push("寒暖差が激しい一日です。脱ぎ着しやすいアウターや羽織りものを持参することをおすすめします。");
+        } else if (minTemp <= 10) {
+            adviceMsgs.push("冷え込む時間帯があります。暖かいインナーやマフラー等の防寒具を活用してください。");
+        }
+
+        if (hasRain) {
+            adviceMsgs.push("雨が降る予報があります。傘の持参と、雨に強い靴（または防水スプレー）をおすすめします。");
+        }
+
+    } else {
+        // Simple Mode Logic
+        const temp = parseInt(document.getElementById('temp-input').value);
+        const place = document.getElementById('location-select').value;
+
+        if (temp >= 25) reqWarmth = 1; // Summer
+        if (temp <= 12) reqWarmth = 3; // Winter
+
+        if (['formal', 'party'].includes(place)) reqFormality = 3;
+        if (['office'].includes(place)) reqFormality = 2;
+        if (['casual', 'cafe', 'school', 'outdoor', 'sports', 'convenience'].includes(place)) reqFormality = 1;
+    }
+
     // Companion overrides/adjustments
     if (companion === 'boss') reqFormality = 3;
     if (reqFormality < 2 && companion === 'date') reqFormality = 2; // Date upgrades casual to smart casual
+
+    if (adviceEl) {
+        if (adviceMsgs.length > 0) {
+            adviceEl.innerHTML = `<strong><i class="fa-solid fa-lightbulb"></i> 今日のポイント</strong><ul>` + adviceMsgs.map(m => `<li>${m}</li>`).join('') + `</ul>`;
+            adviceEl.classList.remove('hidden');
+        } else {
+            adviceEl.classList.add('hidden');
+        }
+    }
 
     const resultGrid = document.getElementById('outfit-grid');
     const resultCard = document.getElementById('outfit-result');
@@ -862,105 +908,199 @@ if (logoutBtn) {
     });
 }
 
-// Weather Auto Fetch Logic (Open-Meteo API)
-async function fetchWeatherAndTemp(lat, lon, isFallback = false) {
-    const statusEl = document.getElementById('weather-status');
-    const tempInput = document.getElementById('temp-input');
-    const weatherSelect = document.getElementById('weather-select');
+// Schedule Management Logic
+let scheduleData = [];
+let isScheduleMode = false;
 
-    if (!statusEl) return;
+const tabSimple = document.getElementById('tab-simple');
+const tabSchedule = document.getElementById('tab-schedule');
+const viewSimple = document.getElementById('simple-location-view');
+const viewSchedule = document.getElementById('schedule-location-view');
 
-    try {
-        statusEl.className = 'weather-status loading';
-        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 気温・天気を取得中...';
+if (tabSimple && tabSchedule) {
+    tabSimple.addEventListener('click', () => {
+        isScheduleMode = false;
+        tabSimple.classList.add('active');
+        tabSchedule.classList.remove('active');
+        viewSimple.classList.remove('hidden');
+        viewSchedule.classList.add('hidden');
+        document.getElementById('weather-extremes').classList.add('hidden');
+    });
 
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`);
-        
-        if (!response.ok) throw new Error('Weather API request failed');
-
-        const data = await response.json();
-        const current = data.current;
-
-        if (!current) throw new Error('Weather data is empty');
-
-        // 1. 気温の反映 (整数値に丸める)
-        const temp = Math.round(current.temperature_2m);
-        if (tempInput) {
-            tempInput.value = temp;
-        }
-
-        // 2. 天気コードのマッピング
-        const code = current.weather_code;
-        let weatherVal = 'sunny';
-        let weatherLabel = '晴れ';
-
-        if (code === 0 || code === 1) {
-            weatherVal = 'sunny';
-            weatherLabel = '晴れ';
-        } else if (code === 2 || code === 3 || code === 45 || code === 48) {
-            weatherVal = 'cloudy';
-            weatherLabel = 'くもり';
-        } else {
-            weatherVal = 'rainy';
-            weatherLabel = '雨';
-        }
-
-        if (weatherSelect) {
-            weatherSelect.value = weatherVal;
-        }
-
-        // 3. ステータス表示の更新
-        statusEl.className = 'weather-status success';
-        if (isFallback) {
-            statusEl.innerHTML = `<i class="fa-solid fa-circle-info"></i> 東京の天気: ${temp}℃ / ${weatherLabel} (位置情報オフ)`;
-        } else {
-            statusEl.innerHTML = `<i class="fa-solid fa-location-dot"></i> 現在地の天気: ${temp}℃ / ${weatherLabel}`;
-        }
-
-    } catch (e) {
-        console.error("Failed to load weather data:", e);
-        statusEl.className = 'weather-status error';
-        statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 天気データの取得に失敗しました';
-    }
-}
-
-function detectLocationAndLoadWeather() {
-    const statusEl = document.getElementById('weather-status');
-    if (!statusEl) return;
-
-    statusEl.className = 'weather-status loading';
-    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 位置情報を取得中...';
-
-    const TOKYO_LAT = 35.6895;
-    const TOKYO_LON = 139.6917;
-
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                fetchWeatherAndTemp(lat, lon, false);
-            },
-            (error) => {
-                console.warn("Geolocation failed or denied:", error);
-                fetchWeatherAndTemp(TOKYO_LAT, TOKYO_LON, true);
-            },
-            { timeout: 8000 }
-        );
-    } else {
-        console.warn("Geolocation is not supported by this browser");
-        fetchWeatherAndTemp(TOKYO_LAT, TOKYO_LON, true);
-    }
-}
-
-// GPS更新ボタンのイベントリスナー
-const gpsSyncBtn = document.getElementById('gps-sync-btn');
-if (gpsSyncBtn) {
-    gpsSyncBtn.addEventListener('click', () => {
-        detectLocationAndLoadWeather();
+    tabSchedule.addEventListener('click', () => {
+        isScheduleMode = true;
+        tabSchedule.classList.add('active');
+        tabSimple.classList.remove('active');
+        viewSchedule.classList.remove('hidden');
+        viewSimple.classList.add('hidden');
+        renderScheduleList();
     });
 }
 
-// 初期起動時に天気を自動取得
-detectLocationAndLoadWeather();
+const addSchedBtn = document.getElementById('add-sched-btn');
+if (addSchedBtn) {
+    addSchedBtn.addEventListener('click', async () => {
+        const placeInput = document.getElementById('sched-place');
+        const timeSelect = document.getElementById('sched-time');
+        const sceneSelect = document.getElementById('sched-scene');
+        
+        const placeQuery = placeInput.value.trim();
+        if (!placeQuery) {
+            alert('場所を入力してください');
+            return;
+        }
+        
+        if (scheduleData.length >= 5) {
+            alert('スケジュールは最大5件まで登録できます');
+            return;
+        }
+
+        const originalBtnText = addSchedBtn.innerHTML;
+        addSchedBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        addSchedBtn.disabled = true;
+
+        try {
+            // 1. Geocoding using GSI API
+            const geoRes = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(placeQuery)}`);
+            const geoData = await geoRes.json();
+            
+            if (!geoData || geoData.length === 0) {
+                alert('場所が見つかりませんでした。別のキーワードをお試しください。');
+                addSchedBtn.innerHTML = originalBtnText;
+                addSchedBtn.disabled = false;
+                return;
+            }
+            
+            const coords = geoData[0].geometry.coordinates; // [lon, lat]
+            const lon = coords[0];
+            const lat = coords[1];
+            const title = geoData[0].properties.title.split(' ').pop() || placeQuery;
+
+            // 2. Fetch Weather using Open-Meteo
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+            const weatherData = await weatherRes.json();
+
+            const timeVal = timeSelect.value;
+            let targetHour = '15'; // Default afternoon
+            let timeLabel = '昼';
+            if (timeVal === 'morning') { targetHour = '09'; timeLabel = '朝'; }
+            if (timeVal === 'evening') { targetHour = '20'; timeLabel = '夜'; }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const targetTimeStr = `${todayStr}T${targetHour}:00`;
+            const hourlyIndex = weatherData.hourly.time.findIndex(t => t.startsWith(targetTimeStr));
+            
+            let temp = 20;
+            let weatherCode = 0;
+            if (hourlyIndex !== -1) {
+                temp = Math.round(weatherData.hourly.temperature_2m[hourlyIndex]);
+                weatherCode = weatherData.hourly.weather_code[hourlyIndex];
+            } else {
+                temp = Math.round(weatherData.hourly.temperature_2m[0]);
+                weatherCode = weatherData.hourly.weather_code[0];
+            }
+
+            const dailyMax = Math.round(weatherData.daily.temperature_2m_max[0]);
+            const dailyMin = Math.round(weatherData.daily.temperature_2m_min[0]);
+
+            let weatherVal = 'sunny';
+            let weatherLabel = '晴れ';
+            if (weatherCode === 0 || weatherCode === 1) {
+                weatherVal = 'sunny'; weatherLabel = '晴れ';
+            } else if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) {
+                weatherVal = 'cloudy'; weatherLabel = 'くもり';
+            } else {
+                weatherVal = 'rainy'; weatherLabel = '雨';
+            }
+            
+            let sceneLabel = sceneSelect.options[sceneSelect.selectedIndex].text;
+            let sceneFormality = 1;
+            if (['formal'].includes(sceneSelect.value)) sceneFormality = 3;
+            if (['office'].includes(sceneSelect.value)) sceneFormality = 2;
+
+            // 3. Add to schedule
+            const newItem = {
+                id: Date.now(),
+                place: title,
+                timeVal,
+                timeLabel,
+                scene: sceneSelect.value,
+                sceneLabel,
+                sceneFormality,
+                temp,
+                dailyMax,
+                dailyMin,
+                weatherVal,
+                weatherLabel
+            };
+
+            scheduleData.push(newItem);
+            
+            // Sort by time (morning -> afternoon -> evening)
+            const timeOrder = { 'morning': 1, 'afternoon': 2, 'evening': 3 };
+            scheduleData.sort((a, b) => timeOrder[a.timeVal] - timeOrder[b.timeVal]);
+
+            placeInput.value = '';
+            renderScheduleList();
+            
+        } catch (e) {
+            console.error(e);
+            alert('データの取得に失敗しました');
+        }
+
+        addSchedBtn.innerHTML = originalBtnText;
+        addSchedBtn.disabled = false;
+    });
+}
+
+window.deleteSchedule = function(id) {
+    scheduleData = scheduleData.filter(item => item.id !== id);
+    renderScheduleList();
+};
+
+function renderScheduleList() {
+    const list = document.getElementById('schedule-list');
+    const extremesEl = document.getElementById('weather-extremes');
+    if (!list) return;
+
+    list.innerHTML = '';
+    
+    if (scheduleData.length === 0) {
+        list.innerHTML = '<li class="empty-msg">スケジュールが登録されていません</li>';
+        if(extremesEl) extremesEl.classList.add('hidden');
+        return;
+    }
+
+    let globalMax = -99;
+    let globalMin = 99;
+
+    scheduleData.forEach(item => {
+        if (item.dailyMax > globalMax) globalMax = item.dailyMax;
+        if (item.dailyMin < globalMin) globalMin = item.dailyMin;
+
+        let icon = 'fa-sun';
+        if (item.weatherVal === 'cloudy') icon = 'fa-cloud';
+        if (item.weatherVal === 'rainy') icon = 'fa-umbrella';
+
+        const li = document.createElement('li');
+        li.className = 'schedule-item';
+        li.innerHTML = `
+            <div class="schedule-item-info">
+                <div class="schedule-item-title">[${item.timeLabel}] ${item.place}</div>
+                <div class="schedule-item-meta">
+                    <span>${item.sceneLabel}</span>
+                    <span class="schedule-item-weather"><i class="fa-solid ${icon}"></i> ${item.temp}℃ / ${item.weatherLabel}</span>
+                </div>
+            </div>
+            <button class="secondary-btn btn-sm" onclick="deleteSchedule(${item.id})"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        list.appendChild(li);
+    });
+
+    if (extremesEl) {
+        extremesEl.innerHTML = `本日の最高: ${globalMax}℃ / 最低: ${globalMin}℃`;
+        extremesEl.classList.remove('hidden');
+    }
+}
+
 

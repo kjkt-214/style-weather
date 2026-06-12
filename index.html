@@ -62,9 +62,8 @@
                     <div class="card context-card">
                         <div class="card-header-with-btn">
                             <h3><i class="fa-solid fa-cloud-sun"></i> 天気・気温</h3>
-                            <button id="gps-sync-btn" class="secondary-btn btn-sm" title="現在地から天気予報を取得"><i class="fa-solid fa-location-crosshairs"></i> GPS同期</button>
+                            <div class="weather-extremes hidden" id="weather-extremes"></div>
                         </div>
-                        <div class="weather-status" id="weather-status">位置情報を取得中...</div>
                         <div class="input-group">
                             <label>気温 (℃)</label>
                             <input type="number" id="temp-input" value="20" min="-10" max="40">
@@ -82,27 +81,75 @@
                     <!-- Location Context -->
                     <div class="card context-card">
                         <h3><i class="fa-solid fa-map-location-dot"></i> 行く場所</h3>
-                        <div class="input-group">
-                            <label>シーン</label>
-                            <select id="location-select">
-                                <optgroup label="日常・お出かけ">
-                                    <option value="convenience">近所のコンビニ・スーパー (ワンマイルウェア)</option>
-                                    <option value="casual" selected>街歩き・ショッピング (カジュアル)</option>
-                                    <option value="cafe">カフェ・映画館 (リラックス)</option>
-                                </optgroup>
-                                <optgroup label="学校・仕事">
-                                    <option value="school">学校・大学 (通学)</option>
-                                    <option value="office">オフィス・仕事 (オフィスカジュアル)</option>
-                                </optgroup>
-                                <optgroup label="アクティブ">
-                                    <option value="outdoor">アウトドア・キャンプ (アクティブ)</option>
-                                    <option value="sports">スポーツジム・ランニング (スポーティ)</option>
-                                </optgroup>
-                                <optgroup label="特別な予定">
-                                    <option value="formal">高級レストラン・ホテル (フォーマル)</option>
-                                    <option value="party">パーティー・二次会 (ドレッシー)</option>
-                                </optgroup>
-                            </select>
+                        <div class="location-tabs">
+                            <button class="tab-btn active" id="tab-simple" type="button">簡易設定</button>
+                            <button class="tab-btn" id="tab-schedule" type="button">スケジュール設定</button>
+                        </div>
+                        
+                        <!-- 簡易設定ビュー -->
+                        <div id="simple-location-view" class="location-view">
+                            <div class="input-group">
+                                <label>シーン</label>
+                                <select id="location-select">
+                                    <optgroup label="日常・お出かけ">
+                                        <option value="convenience">近所のコンビニ・スーパー (ワンマイルウェア)</option>
+                                        <option value="casual" selected>街歩き・ショッピング (カジュアル)</option>
+                                        <option value="cafe">カフェ・映画館 (リラックス)</option>
+                                    </optgroup>
+                                    <optgroup label="学校・仕事">
+                                        <option value="school">学校・大学 (通学)</option>
+                                        <option value="office">オフィス・仕事 (オフィスカジュアル)</option>
+                                    </optgroup>
+                                    <optgroup label="アクティブ">
+                                        <option value="outdoor">アウトドア・キャンプ (アクティブ)</option>
+                                        <option value="sports">スポーツジム・ランニング (スポーティ)</option>
+                                    </optgroup>
+                                    <optgroup label="特別な予定">
+                                        <option value="formal">高級レストラン・ホテル (フォーマル)</option>
+                                        <option value="party">パーティー・二次会 (ドレッシー)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- スケジュール設定ビュー -->
+                        <div id="schedule-location-view" class="location-view hidden">
+                            <div class="schedule-form">
+                                <div class="input-row">
+                                    <div class="input-group">
+                                        <label>時間帯</label>
+                                        <select id="sched-time">
+                                            <option value="morning">朝 (6:00 - 12:00)</option>
+                                            <option value="afternoon" selected>昼 (12:00 - 18:00)</option>
+                                            <option value="evening">夜 (18:00 - 24:00)</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label>シーン</label>
+                                        <select id="sched-scene">
+                                            <option value="casual" selected>カジュアル</option>
+                                            <option value="cafe">カフェ (リラックス)</option>
+                                            <option value="office">オフィス (きれいめ)</option>
+                                            <option value="formal">フォーマル</option>
+                                            <option value="sports">アクティブ/スポーツ</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label>場所 (フリーワード)</label>
+                                    <div class="search-input-group">
+                                        <input type="text" id="sched-place" placeholder="例: ディズニーランド、渋谷">
+                                        <button type="button" id="add-sched-btn" class="secondary-btn btn-sm">追加</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="schedule-list-container">
+                                <h4>本日のスケジュール</h4>
+                                <ul id="schedule-list" class="schedule-list">
+                                    <li class="empty-msg">スケジュールが登録されていません</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
 
@@ -131,6 +178,7 @@
                     <div class="outfit-grid" id="outfit-grid">
                         <!-- Items injected by JS -->
                     </div>
+                    <div id="outfit-advice" class="outfit-advice hidden"></div>
                     <div class="outfit-actions">
                         <div class="rating-select">
                             <span>今日のコーデを評価:</span>
@@ -266,6 +314,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://maps.gsi.go.jp/js/muni.js" charset="utf-8"></script>
     <script src="app.js"></script>
 </body>
 </html>

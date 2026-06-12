@@ -1003,47 +1003,150 @@ input:focus, select:focus {
     margin-bottom: 0 !important;
 }
 
-/* Weather Auto Fetch Status */
-.weather-status {
+/* Weather Extremes */
+.weather-extremes {
     font-size: 0.8rem;
     color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-color);
-    padding: 6px 12px;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
     font-family: var(--font-heading);
 }
 
-.weather-status.loading {
-    border-left: 2px solid var(--accent-primary);
+/* Location Tabs */
+.location-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
 }
 
-.weather-status.success {
-    border-left: 2px solid var(--accent-primary);
+.tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
+    padding: 5px 10px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.3s;
+}
+
+.tab-btn:hover {
     color: var(--text-primary);
 }
 
-.weather-status.error {
-    border-left: 2px solid #ef4444;
-    color: #ef4444;
+.tab-btn.active {
+    color: var(--text-primary);
 }
 
-#gps-sync-btn {
-    font-family: var(--font-heading);
-    letter-spacing: 0.05em;
-    font-size: 0.75rem !important;
-    padding: 4px 10px !important;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--text-primary);
+}
+
+/* Schedule Form & List */
+.schedule-form {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
     border-radius: var(--border-radius-md);
+    padding: 15px;
+    margin-bottom: 15px;
 }
 
-#gps-sync-btn:hover {
-    color: #000000;
-    background: #ffffff;
-    border-color: #ffffff;
+.input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.input-row .input-group {
+    flex: 1;
+}
+
+.search-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.search-input-group input {
+    flex: 1;
+}
+
+.schedule-list-container h4 {
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+}
+
+.schedule-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.schedule-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 10px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.schedule-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.schedule-item-title {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.schedule-item-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 10px;
+}
+
+.schedule-item-weather {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
+
+.empty-msg {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 10px 0;
+}
+
+/* Outfit Advice Area */
+.outfit-advice {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 0 var(--border-radius-md) var(--border-radius-md) 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.outfit-advice ul {
+    margin-top: 10px;
+    padding-left: 20px;
+    color: var(--text-secondary);
 }
