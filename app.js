@@ -862,3 +862,105 @@ if (logoutBtn) {
     });
 }
 
+// Weather Auto Fetch Logic (Open-Meteo API)
+async function fetchWeatherAndTemp(lat, lon, isFallback = false) {
+    const statusEl = document.getElementById('weather-status');
+    const tempInput = document.getElementById('temp-input');
+    const weatherSelect = document.getElementById('weather-select');
+
+    if (!statusEl) return;
+
+    try {
+        statusEl.className = 'weather-status loading';
+        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 気温・天気を取得中...';
+
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`);
+        
+        if (!response.ok) throw new Error('Weather API request failed');
+
+        const data = await response.json();
+        const current = data.current;
+
+        if (!current) throw new Error('Weather data is empty');
+
+        // 1. 気温の反映 (整数値に丸める)
+        const temp = Math.round(current.temperature_2m);
+        if (tempInput) {
+            tempInput.value = temp;
+        }
+
+        // 2. 天気コードのマッピング
+        const code = current.weather_code;
+        let weatherVal = 'sunny';
+        let weatherLabel = '晴れ';
+
+        if (code === 0 || code === 1) {
+            weatherVal = 'sunny';
+            weatherLabel = '晴れ';
+        } else if (code === 2 || code === 3 || code === 45 || code === 48) {
+            weatherVal = 'cloudy';
+            weatherLabel = 'くもり';
+        } else {
+            weatherVal = 'rainy';
+            weatherLabel = '雨';
+        }
+
+        if (weatherSelect) {
+            weatherSelect.value = weatherVal;
+        }
+
+        // 3. ステータス表示の更新
+        statusEl.className = 'weather-status success';
+        if (isFallback) {
+            statusEl.innerHTML = `<i class="fa-solid fa-circle-info"></i> 東京の天気: ${temp}℃ / ${weatherLabel} (位置情報オフ)`;
+        } else {
+            statusEl.innerHTML = `<i class="fa-solid fa-location-dot"></i> 現在地の天気: ${temp}℃ / ${weatherLabel}`;
+        }
+
+    } catch (e) {
+        console.error("Failed to load weather data:", e);
+        statusEl.className = 'weather-status error';
+        statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 天気データの取得に失敗しました';
+    }
+}
+
+function detectLocationAndLoadWeather() {
+    const statusEl = document.getElementById('weather-status');
+    if (!statusEl) return;
+
+    statusEl.className = 'weather-status loading';
+    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 位置情報を取得中...';
+
+    const TOKYO_LAT = 35.6895;
+    const TOKYO_LON = 139.6917;
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                fetchWeatherAndTemp(lat, lon, false);
+            },
+            (error) => {
+                console.warn("Geolocation failed or denied:", error);
+                fetchWeatherAndTemp(TOKYO_LAT, TOKYO_LON, true);
+            },
+            { timeout: 8000 }
+        );
+    } else {
+        console.warn("Geolocation is not supported by this browser");
+        fetchWeatherAndTemp(TOKYO_LAT, TOKYO_LON, true);
+    }
+}
+
+// GPS更新ボタンのイベントリスナー
+const gpsSyncBtn = document.getElementById('gps-sync-btn');
+if (gpsSyncBtn) {
+    gpsSyncBtn.addEventListener('click', () => {
+        detectLocationAndLoadWeather();
+    });
+}
+
+// 初期起動時に天気を自動取得
+detectLocationAndLoadWeather();
+

@@ -60,7 +60,11 @@
                 <div class="context-cards">
                     <!-- Weather Context -->
                     <div class="card context-card">
-                        <h3><i class="fa-solid fa-cloud-sun"></i> 天気・気温</h3>
+                        <div class="card-header-with-btn">
+                            <h3><i class="fa-solid fa-cloud-sun"></i> 天気・気温</h3>
+                            <button id="gps-sync-btn" class="secondary-btn btn-sm" title="現在地から天気予報を取得"><i class="fa-solid fa-location-crosshairs"></i> GPS同期</button>
+                        </div>
+                        <div class="weather-status" id="weather-status">位置情報を取得中...</div>
                         <div class="input-group">
                             <label>気温 (℃)</label>
                             <input type="number" id="temp-input" value="20" min="-10" max="40">

@@ -990,3 +990,60 @@ input:focus, select:focus {
         gap: 15px;
     }
 }
+
+/* Card header with button alignment (for weather card) */
+.card-header-with-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.card-header-with-btn h3 {
+    margin-bottom: 0 !important;
+}
+
+/* Weather Auto Fetch Status */
+.weather-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-heading);
+}
+
+.weather-status.loading {
+    border-left: 2px solid var(--accent-primary);
+}
+
+.weather-status.success {
+    border-left: 2px solid var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.weather-status.error {
+    border-left: 2px solid #ef4444;
+    color: #ef4444;
+}
+
+#gps-sync-btn {
+    font-family: var(--font-heading);
+    letter-spacing: 0.05em;
+    font-size: 0.75rem !important;
+    padding: 4px 10px !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: var(--border-radius-md);
+}
+
+#gps-sync-btn:hover {
+    color: #000000;
+    background: #ffffff;
+    border-color: #ffffff;
+}
