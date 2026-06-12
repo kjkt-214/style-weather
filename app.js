@@ -908,61 +908,14 @@ if (logoutBtn) {
     });
 }
 
-// ---- 郵便番号から天気・気温を取得する機能 ----
-async function fetchWeatherByPostal(postalCode) {
-    const statusEl = document.getElementById('postal-status');
+// ---- 位置情報から天気・気温を自動取得する機能 ----
+async function fetchWeatherByCoords(lat, lon) {
+    const statusEl = document.getElementById('weather-status');
+    const extremesEl = document.getElementById('weather-extremes');
     const tempInput = document.getElementById('temp-input');
     const weatherSelect = document.getElementById('weather-select');
-    const extremesEl = document.getElementById('weather-extremes');
-
-    if (!statusEl) return;
-
-    // 数字7桁に正規化（ハイフンを除去）
-    const normalizedCode = postalCode.replace(/-/g, '').trim();
-    if (!/^\d{7}$/.test(normalizedCode)) {
-        statusEl.className = 'postal-status error';
-        statusEl.textContent = '郵便番号は7桁の数字で入力してください（例: 1350061）';
-        statusEl.classList.remove('hidden');
-        return;
-    }
-
-    statusEl.className = 'postal-status';
-    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 住所を検索中...';
-    statusEl.classList.remove('hidden');
 
     try {
-        // Step 1: zipcloud APIで郵便番号 → 住所・緯度経度
-        const zipRes = await fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${normalizedCode}`);
-        const zipData = await zipRes.json();
-
-        if (!zipData.results || zipData.results.length === 0) {
-            statusEl.className = 'postal-status error';
-            statusEl.textContent = '郵便番号に対応する住所が見つかりませんでした。';
-            return;
-        }
-
-        const result = zipData.results[0];
-        const addressLabel = `${result.address1}${result.address2}${result.address3}`;
-
-        // zipcloudには座標が含まれないため、国土地理院APIで座標を取得
-        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 座標を取得中...';
-
-        const geoRes = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(addressLabel)}`);
-        const geoData = await geoRes.json();
-
-        if (!geoData || geoData.length === 0) {
-            statusEl.className = 'postal-status error';
-            statusEl.textContent = `住所「${addressLabel}」の座標が取得できませんでした。`;
-            return;
-        }
-
-        const coords = geoData[0].geometry.coordinates; // [lon, lat]
-        const lon = coords[0];
-        const lat = coords[1];
-
-        // Step 2: Open-Meteo APIで天気・気温・最高最低気温を取得
-        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 天気データを取得中...';
-
         const weatherRes = await fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
             `&current=temperature_2m,weather_code` +
@@ -970,58 +923,77 @@ async function fetchWeatherByPostal(postalCode) {
             `&timezone=auto`
         );
         const weatherData = await weatherRes.json();
-
         const current = weatherData.current;
         const daily = weatherData.daily;
+        if (!current) throw new Error('no data');
 
-        if (!current) throw new Error('天気データが取得できませんでした');
-
-        // 現在気温と天気を反映
         const currentTemp = Math.round(current.temperature_2m);
         const weatherCode = current.weather_code;
         const dailyMax = Math.round(daily.temperature_2m_max[0]);
         const dailyMin = Math.round(daily.temperature_2m_min[0]);
 
-        let weatherVal = 'sunny';
-        let weatherLabel = '晴れ';
-        if (weatherCode === 0 || weatherCode === 1) {
-            weatherVal = 'sunny'; weatherLabel = '晴れ';
-        } else if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) {
-            weatherVal = 'cloudy'; weatherLabel = 'くもり';
-        } else {
-            weatherVal = 'rainy'; weatherLabel = '雨';
-        }
+        let weatherVal = 'sunny', weatherLabel = '晴れ';
+        if (weatherCode === 0 || weatherCode === 1) { weatherVal = 'sunny'; weatherLabel = '晴れ'; }
+        else if (weatherCode === 2 || weatherCode === 3 || weatherCode === 45 || weatherCode === 48) { weatherVal = 'cloudy'; weatherLabel = 'くもり'; }
+        else { weatherVal = 'rainy'; weatherLabel = '雨'; }
 
         if (tempInput) tempInput.value = currentTemp;
         if (weatherSelect) weatherSelect.value = weatherVal;
 
-        // 最高・最低気温を表示
         if (extremesEl) {
             extremesEl.innerHTML = `本日 最高: <strong>${dailyMax}℃</strong> / 最低: <strong>${dailyMin}℃</strong>`;
             extremesEl.classList.remove('hidden');
         }
-
-        statusEl.className = 'postal-status success';
-        statusEl.innerHTML = `<i class="fa-solid fa-location-dot"></i> ${addressLabel} — 現在 ${currentTemp}℃ / ${weatherLabel}`;
-
+        if (statusEl) {
+            statusEl.className = 'weather-status success';
+            statusEl.innerHTML = `<i class="fa-solid fa-location-dot"></i> 現在地 — ${currentTemp}℃ / ${weatherLabel}`;
+            statusEl.classList.remove('hidden');
+        }
     } catch (e) {
-        console.error('郵便番号から天気の取得に失敗:', e);
-        statusEl.className = 'postal-status error';
-        statusEl.textContent = 'データの取得に失敗しました。しばらくしてから再試行してください。';
+        console.error('天気データの取得に失敗:', e);
+        if (statusEl) {
+            statusEl.className = 'weather-status error';
+            statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 天気データの取得に失敗しました';
+            statusEl.classList.remove('hidden');
+        }
     }
 }
 
-const postalBtn = document.getElementById('postal-btn');
-const postalInput = document.getElementById('postal-input');
-
-if (postalBtn && postalInput) {
-    postalBtn.addEventListener('click', () => {
-        fetchWeatherByPostal(postalInput.value);
-    });
-    postalInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') fetchWeatherByPostal(postalInput.value);
-    });
+function detectAndFetchWeather() {
+    const statusEl = document.getElementById('weather-status');
+    if (statusEl) {
+        statusEl.className = 'weather-status loading';
+        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 現在地を取得中...';
+        statusEl.classList.remove('hidden');
+    }
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude),
+            (err) => {
+                console.warn('位置情報取得失敗:', err);
+                // 東京をデフォルトに
+                fetchWeatherByCoords(35.6895, 139.6917);
+                if (statusEl) {
+                    statusEl.className = 'weather-status';
+                    statusEl.innerHTML = '<i class="fa-solid fa-circle-info"></i> 位置情報が取得できないため、東京の天気を表示しています';
+                }
+            },
+            { timeout: 8000 }
+        );
+    } else {
+        fetchWeatherByCoords(35.6895, 139.6917);
+    }
 }
+
+// 「現在地」ボタン
+const gpsSyncBtn = document.getElementById('gps-sync-btn');
+if (gpsSyncBtn) {
+    gpsSyncBtn.addEventListener('click', detectAndFetchWeather);
+}
+
+// ページ読み込み時に自動取得
+detectAndFetchWeather();
+
 
 // ---- Schedule Management Logic ----
 let scheduleData = [];
@@ -1076,21 +1048,26 @@ if (addSchedBtn) {
         addSchedBtn.disabled = true;
 
         try {
-            // 1. Geocoding using GSI API
-            const geoRes = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(placeQuery)}`);
+            // 1. Geocoding using Nominatim (OpenStreetMap) - POI検索に優れている
+            const geoRes = await fetch(
+                `https://nominatim.openstreetmap.org/search?` +
+                `q=${encodeURIComponent(placeQuery)}&countrycodes=jp&format=json&limit=5&addressdetails=1&namedetails=1`,
+                { headers: { 'Accept-Language': 'ja', 'User-Agent': 'style-weather-app' } }
+            );
             const geoData = await geoRes.json();
             
             if (!geoData || geoData.length === 0) {
-                alert('場所が見つかりませんでした。別のキーワードをお試しください。');
+                alert('場所が見つかりませんでした。別のキーワードをお試しください。\n例: 「よみうりランド」「東京ディズニーランド」「渋谷駅」');
                 addSchedBtn.innerHTML = originalBtnText;
                 addSchedBtn.disabled = false;
                 return;
             }
             
-            const coords = geoData[0].geometry.coordinates; // [lon, lat]
-            const lon = coords[0];
-            const lat = coords[1];
-            const title = geoData[0].properties.title.split(' ').pop() || placeQuery;
+            const lat = parseFloat(geoData[0].lat);
+            const lon = parseFloat(geoData[0].lon);
+            // 表示名を日本語で取得（name > display_name の先頭部分）
+            const title = geoData[0].namedetails?.name || geoData[0].display_name.split(',')[0] || placeQuery;
+
 
             // 2. Fetch Weather using Open-Meteo
             const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);

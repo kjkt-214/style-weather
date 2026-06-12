@@ -1189,11 +1189,59 @@ input:focus, select:focus {
 }
 
 /* Weather Extremes in Simple Mode */
-#weather-extremes.simple-extremes {
-    font-size: 0.8rem;
+#weather-extremes {
+    font-size: 0.82rem;
     color: var(--text-secondary);
     background: rgba(255,255,255,0.05);
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 5px 10px;
+    border-radius: var(--border-radius-md);
     font-family: var(--font-heading);
+    margin-bottom: 0.8rem;
+    text-align: center;
+}
+
+/* GPS Weather Status */
+.weather-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-heading);
+    border-radius: var(--border-radius-md);
+}
+
+.weather-status.loading {
+    border-left: 2px solid var(--accent-primary);
+}
+
+.weather-status.success {
+    border-left: 2px solid var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.weather-status.error {
+    border-left: 2px solid #ef4444;
+    color: #ef4444;
+}
+
+/* GPS Sync Button */
+#gps-sync-btn {
+    font-family: var(--font-heading);
+    font-size: 0.75rem !important;
+    padding: 4px 10px !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: var(--border-radius-md);
+}
+
+#gps-sync-btn:hover {
+    color: #000;
+    background: #fff;
+    border-color: #fff;
 }

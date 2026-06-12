@@ -62,16 +62,12 @@
                     <div class="card context-card">
                         <div class="card-header-with-btn">
                             <h3><i class="fa-solid fa-cloud-sun"></i> 天気・気温</h3>
-                            <div class="weather-extremes hidden" id="weather-extremes"></div>
+                            <button id="gps-sync-btn" class="secondary-btn btn-sm" title="現在地から天気を再取得">
+                                <i class="fa-solid fa-location-crosshairs"></i> 現在地
+                            </button>
                         </div>
-                        <!-- 郵便番号から気温・天気を取得 -->
-                        <div class="postal-lookup">
-                            <div class="postal-input-row">
-                                <input type="text" id="postal-input" placeholder="例: 135-0061（ディズニー周辺）" maxlength="8">
-                                <button id="postal-btn" class="secondary-btn btn-sm"><i class="fa-solid fa-magnifying-glass"></i> 取得</button>
-                            </div>
-                            <div id="postal-status" class="postal-status hidden"></div>
-                        </div>
+                        <div id="weather-status" class="weather-status hidden"></div>
+                        <div id="weather-extremes" class="weather-extremes hidden"></div>
                         <div class="input-group">
                             <label>気温 (℃)</label>
                             <input type="number" id="temp-input" value="20" min="-10" max="40">
