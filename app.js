@@ -42,6 +42,9 @@ let inventory = JSON.parse(localStorage.getItem('sw_inventory'));
 const savedVersion = localStorage.getItem('sw_inventory_version');
 let wearHistory = JSON.parse(localStorage.getItem('sw_history')) || [];
 
+// stylePreferences: AI学習データ { [itemId]: { totalScore, ratingCount, conditionScores: { [key]: totalScore, [key+'_count']: count } } }
+let stylePreferences = JSON.parse(localStorage.getItem('sw_prefs')) || {};
+
 if (!inventory || inventory.length === 0 || savedVersion !== INVENTORY_VERSION) {
     inventory = DEFAULT_INVENTORY;
     localStorage.setItem('sw_inventory', JSON.stringify(inventory));
@@ -56,6 +59,10 @@ function saveInventoryLocal() {
 
 function saveHistoryLocal() {
     localStorage.setItem('sw_history', JSON.stringify(wearHistory));
+}
+
+function savePrefsLocal() {
+    localStorage.setItem('sw_prefs', JSON.stringify(stylePreferences));
 }
 
 async function saveInventory() {
@@ -85,6 +92,165 @@ async function saveHistory() {
         }
     }
 }
+
+async function savePrefs() {
+    savePrefsLocal();
+    if (isFirebaseInitialized && currentUser) {
+        try {
+            await db.collection("users").doc(currentUser.uid).update({
+                stylePreferences: stylePreferences,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error("Failed to update stylePreferences to Firestore:", e);
+        }
+    }
+}
+
+// ---- AI スコアリングエンジン ----
+
+/**
+ * 気温をカテゴリキーに変換: cold(<13) / mild(13-24) / hot(>=25)
+ */
+function getTempKey(temp) {
+    if (temp >= 25) return 'temp_hot';
+    if (temp <= 12) return 'temp_cold';
+    return 'temp_mild';
+}
+
+/**
+ * 着用記録を学習データに反映
+ * @param {Array} outfitItems - 着用したアイテムの配列
+ * @param {number} rating - ユーザーの評価 (1-5)
+ * @param {Object} context - { tempKey, weatherVal, scene }
+ */
+function learnFromWear(outfitItems, rating, context) {
+    outfitItems.forEach(item => {
+        const id = String(item.id);
+        if (!stylePreferences[id]) {
+            stylePreferences[id] = { totalScore: 0, ratingCount: 0, conditionScores: {} };
+        }
+        const pref = stylePreferences[id];
+        pref.totalScore += rating;
+        pref.ratingCount += 1;
+
+        // 条件別スコアの更新
+        const condKeys = [context.tempKey, `weather_${context.weatherVal}`, `scene_${context.scene}`];
+        condKeys.forEach(key => {
+            if (!pref.conditionScores[key]) pref.conditionScores[key] = 0;
+            if (!pref.conditionScores[key + '_n']) pref.conditionScores[key + '_n'] = 0;
+            pref.conditionScores[key] += rating;
+            pref.conditionScores[key + '_n'] += 1;
+        });
+    });
+    savePrefs();
+}
+
+/**
+ * AIスコアを計算 (0〜1.0)
+ * @param {Object} item - インベントリアイテム
+ * @param {Object} context - { tempKey, weatherVal, scene }
+ * @returns {number} - 0.0 〜 1.0のスコア
+ */
+function computeAIScore(item, context) {
+    const pref = stylePreferences[String(item.id)];
+    if (!pref || pref.ratingCount === 0) return 0.5; // データなし時は中立スコア
+
+    const condKeys = [context.tempKey, `weather_${context.weatherVal}`, `scene_${context.scene}`];
+    let weightedScore = 0;
+    let totalWeight = 0;
+
+    condKeys.forEach((key, i) => {
+        const n = pref.conditionScores[key + '_n'] || 0;
+        if (n > 0) {
+            const avg = pref.conditionScores[key] / n;
+            const weight = Math.min(n, 5) * (i === 0 ? 1.5 : 1.0); // 気温は重みを1.5倍
+            weightedScore += avg * weight;
+            totalWeight += weight;
+        }
+    });
+
+    // 条件別データがない場合は全体平均を使う
+    if (totalWeight === 0) {
+        const overallAvg = pref.totalScore / pref.ratingCount;
+        return overallAvg / 5.0;
+    }
+
+    const condScore = weightedScore / totalWeight / 5.0;
+    // データが少ない場合は中立値(0.5)に引き寄せる
+    const confidence = Math.min(pref.ratingCount / 10, 1.0);
+    return condScore * confidence + 0.5 * (1 - confidence);
+}
+
+/**
+ * 総着用回数を取得
+ */
+function getTotalWears() {
+    return wearHistory.length;
+}
+
+/**
+ * AIレベルを計算 (1〜10)
+ */
+function getAILevel() {
+    const wears = getTotalWears();
+    if (wears >= 100) return 10;
+    if (wears >= 60) return 9;
+    if (wears >= 40) return 8;
+    if (wears >= 25) return 7;
+    if (wears >= 15) return 6;
+    if (wears >= 8) return 5;
+    if (wears >= 4) return 4;
+    if (wears >= 2) return 3;
+    if (wears >= 1) return 2;
+    return 1;
+}
+
+/**
+ * AI進捗バーを更新
+ */
+function renderAIStatus() {
+    const bar = document.getElementById('ai-status-bar');
+    if (!bar) return;
+
+    const level = getAILevel();
+    const wears = getTotalWears();
+    const levelThresholds = [0, 1, 2, 4, 8, 15, 25, 40, 60, 100, Infinity];
+    const current = wears - levelThresholds[level - 1];
+    const needed = levelThresholds[level] - levelThresholds[level - 1];
+    const pct = Math.min(Math.round((current / needed) * 100), 100);
+
+    // AI学習サマリー
+    const prefCount = Object.keys(stylePreferences).length;
+    const topItem = Object.entries(stylePreferences)
+        .filter(([, v]) => v.ratingCount > 0)
+        .sort(([, a], [, b]) => (b.totalScore / b.ratingCount) - (a.totalScore / a.ratingCount))[0];
+    const topItemName = topItem ? (inventory.find(i => String(i.id) === topItem[0])?.name || '—') : '—';
+
+    const levelEmoji = ['🌱','🌿','🌾','⭐','🌟','💡','🔥','💎','🏆','👑'][level - 1];
+
+    bar.innerHTML = `
+        <div class="ai-header">
+            <span class="ai-title"><i class="fa-solid fa-brain"></i> スタイリストAI</span>
+            <span class="ai-level">${levelEmoji} Lv.${level}</span>
+        </div>
+        <div class="ai-bar-wrap">
+            <div class="ai-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="ai-meta">
+            <span>${wears}回の着用データを学習中</span>
+            ${prefCount > 0 ? `<span>高評価: ${topItemName}</span>` : '<span>まだ学習中...</span>'}
+        </div>
+    `;
+}
+
+/**
+ * アイテムの総着用回数を返す
+ */
+function getWearCount(itemId) {
+    return wearHistory.filter(r => r.itemIds && r.itemIds.includes(itemId)).length;
+}
+
 
 // Helper: Get Icon based on category
 function getCategoryIcon(category) {
@@ -183,6 +349,10 @@ function renderCloset() {
                 div.classList.add('recent');
             }
 
+            const wearCount = getWearCount(item.id);
+            const pref = stylePreferences[String(item.id)];
+            const avgRating = pref && pref.ratingCount > 0 ? (pref.totalScore / pref.ratingCount).toFixed(1) : null;
+
             let badgeHtml = '';
             let actionBtnText = '洗濯かごへ';
             
@@ -193,10 +363,14 @@ function renderCloset() {
                 badgeHtml = '<span class="status-badge recent">最近着用(3日内)</span>';
             }
 
+            const wearCountHtml = `<span class="wear-count"><i class="fa-solid fa-rotate-left"></i> ${wearCount}回着用</span>`;
+            const aiRatingHtml = avgRating ? `<span class="ai-rating"><i class="fa-solid fa-star"></i> 平均${avgRating}</span>` : '';
+
             div.innerHTML = `
                 ${badgeHtml}
                 <i class="fa-solid ${item.icon || getCategoryIcon(item.category)} icon"></i>
                 <h4>${item.name}</h4>
+                <div class="wear-stats">${wearCountHtml}${aiRatingHtml}</div>
                 <div class="tags">
                     <span class="tag">${getCategoryName(item.category)}</span>
                     <span class="tag">フォーマル度: ${item.formality}</span>
@@ -390,32 +564,54 @@ document.getElementById('generate-btn').addEventListener('click', () => {
         }
     });
 
-    // Simple matching algorithm
+    // 現在のコンテキストを確定（AI学習・スコア計算に使用）
+    const currentTempVal = isScheduleMode && scheduleData.length > 0
+        ? Math.round((scheduleData.reduce((s, i) => s + i.temp, 0) / scheduleData.length))
+        : parseInt(document.getElementById('temp-input').value || '20');
+    const currentWeather = isScheduleMode && scheduleData.length > 0
+        ? (scheduleData.some(i => i.weatherVal === 'rainy') ? 'rainy' : scheduleData[0].weatherVal)
+        : document.getElementById('weather-select').value;
+    const currentScene = isScheduleMode && scheduleData.length > 0
+        ? scheduleData.reduce((best, i) => i.sceneFormality > (best?.sceneFormality || 0) ? i : best, null)?.scene || 'casual'
+        : (document.getElementById('location-select')?.value || 'casual');
+
+    const aiContext = {
+        tempKey: getTempKey(currentTempVal),
+        weatherVal: currentWeather,
+        scene: currentScene
+    };
+    // generate-btn が押された時のコンテキストをグローバルに保存
+    window._lastAIContext = aiContext;
+
+    // ---- AI スコアリングで最適アイテムを選択 ----
     const filterAndPick = (category) => {
-        // Exclude laundry items
         let candidates = inventory.filter(item => item.category === category && item.status !== 'laundry');
         if (candidates.length === 0) return null;
 
-        // Exclude recently worn items (preferred)
-        let preferredCandidates = candidates.filter(item => !recentlyWornIds.has(item.id));
-        
-        const pickBest = (pool) => {
-            if (pool.length === 0) return null;
-            let exact = pool.find(item => item.warmth === reqWarmth && item.formality === reqFormality);
-            if (exact) return exact;
-            let formMatch = pool.find(item => item.formality === reqFormality);
-            if (formMatch) return formMatch;
-            let warmthMatch = pool.find(item => item.warmth === reqWarmth);
-            if (warmthMatch) return warmthMatch;
-            return pool[0];
-        };
+        // AIスコアを算出してソート
+        candidates = candidates.map(item => {
+            // 暖かさマッチ (0-40点)
+            const warmthDiff = Math.abs(item.warmth - reqWarmth);
+            const warmthScore = warmthDiff === 0 ? 40 : warmthDiff === 1 ? 20 : 0;
 
-        // Try to pick from non-recently worn items first
-        let best = pickBest(preferredCandidates);
-        if (best) return best;
+            // フォーマリティマッチ (0-30点)
+            const formalDiff = Math.abs(item.formality - reqFormality);
+            const formalScore = formalDiff === 0 ? 30 : formalDiff === 1 ? 15 : 0;
 
-        // Fallback: pick from recently worn items if no other choices
-        return pickBest(candidates);
+            // AIスコア (0-30点)
+            const aiRaw = computeAIScore(item, aiContext); // 0.0〜1.0
+            const aiScore = aiRaw * 30;
+
+            // 最近着用したものは少しペナルティ
+            const recentPenalty = recentlyWornIds.has(item.id) ? -15 : 0;
+
+            const total = warmthScore + formalScore + aiScore + recentPenalty;
+            return { ...item, _score: total };
+        });
+
+        // スコア降順でソート
+        candidates.sort((a, b) => b._score - a._score);
+        return candidates[0];
     };
 
     const outfit = [];
@@ -442,10 +638,12 @@ document.getElementById('generate-btn').addEventListener('click', () => {
         outfit.forEach(item => {
             const div = document.createElement('div');
             div.className = 'outfit-item';
+            const wc = getWearCount(item.id);
             div.innerHTML = `
                 <span class="category-label">${getCategoryName(item.category)}</span>
                 <i class="fa-solid ${item.icon || getCategoryIcon(item.category)} icon"></i>
                 <h4>${item.name}</h4>
+                <span class="item-wear-count">${wc > 0 ? `${wc}回着用` : '初着用'}</span>
             `;
             resultGrid.appendChild(div);
         });
@@ -456,6 +654,7 @@ document.getElementById('generate-btn').addEventListener('click', () => {
         document.querySelector('.outfit-actions').classList.remove('hidden');
     }
 
+    renderAIStatus();
     resultCard.classList.remove('hidden');
     resultCard.scrollIntoView({ behavior: 'smooth' });
 });
@@ -513,6 +712,11 @@ document.getElementById('wear-btn').addEventListener('click', () => {
     wearHistory.unshift(newRecord);
     saveHistory();
 
+    // ---- AI学習: 評価データをstylePreferencesに反映 ----
+    const ctx = window._lastAIContext || { tempKey: 'temp_mild', weatherVal: 'sunny', scene: 'casual' };
+    learnFromWear(currentSuggestedOutfit, selectedRating, ctx);
+    renderAIStatus();
+
     // Send to laundry
     currentSuggestedOutfit.forEach(outfitItem => {
         const item = inventory.find(i => i.id === outfitItem.id);
@@ -533,6 +737,7 @@ document.getElementById('wear-btn').addEventListener('click', () => {
         resetRatingStars();
     }, 1500);
 });
+
 
 // History & Laundry rendering
 function renderHistoryView() {
@@ -686,6 +891,7 @@ function analyzeShopping() {
 
 // Initial render
 renderCloset();
+renderAIStatus();
 
 // Firebase Synchronization & Auth Control Logic
 let currentUser = null;
