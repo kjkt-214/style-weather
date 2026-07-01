@@ -189,7 +189,10 @@
                 <div class="action-container">
                     <!-- AI進捗バー -->
                     <div id="ai-status-bar" class="ai-status-bar"></div>
-                    <button id="generate-btn" class="primary-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> コーデを提案する</button>
+                    <div class="action-btn-row">
+                        <button id="generate-btn" class="primary-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> コーデを提案する</button>
+                        <button id="reshuffle-btn" class="secondary-btn reshuffle-btn hidden" title="同じ条件で別パターンを提案"><i class="fa-solid fa-shuffle"></i> 再提案</button>
+                    </div>
                 </div>
 
                 <!-- Result Section -->
@@ -249,6 +252,29 @@
                     </form>
                 </div>
 
+                <!-- フィルター・ソートバー -->
+                <div class="closet-filter-bar">
+                    <div class="filter-chips" id="filter-chips">
+                        <button class="chip active" data-filter="all">すべて</button>
+                        <button class="chip" data-filter="tops"><i class="fa-solid fa-shirt"></i> トップス</button>
+                        <button class="chip" data-filter="bottoms"><i class="fa-solid fa-person"></i> ボトムス</button>
+                        <button class="chip" data-filter="outer"><i class="fa-solid fa-user-tie"></i> アウター</button>
+                        <button class="chip" data-filter="shoes"><i class="fa-solid fa-shoe-prints"></i> シューズ</button>
+                    </div>
+                    <div class="sort-control">
+                        <label for="closet-sort"><i class="fa-solid fa-arrow-up-wide-short"></i></label>
+                        <select id="closet-sort" class="sort-select">
+                            <option value="default">登録順</option>
+                            <option value="wears-desc">着用回数 (多い順)</option>
+                            <option value="wears-asc">着用回数 (少ない順)</option>
+                            <option value="rating-desc">AI評価 (高い順)</option>
+                            <option value="formality-asc">フォーマル度 (低→高)</option>
+                            <option value="formality-desc">フォーマル度 (高→低)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="closet-stats" id="closet-stats"></div>
+
                 <div class="closet-grid" id="closet-grid">
                     <!-- Inventory items injected by JS -->
                 </div>
@@ -303,6 +329,27 @@
 
         </main>
     </div>
+
+    <!-- モバイル用ボトムナビバー -->
+    <nav class="bottom-nav" id="bottom-nav">
+        <button class="bottom-nav-item active" data-target="home">
+            <i class="fa-solid fa-house"></i>
+            <span>ホーム</span>
+        </button>
+        <button class="bottom-nav-item" data-target="closet">
+            <i class="fa-solid fa-door-closed"></i>
+            <span>クローゼット</span>
+        </button>
+        <button class="bottom-nav-item" data-target="history">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>履歴</span>
+        </button>
+        <button class="bottom-nav-item" data-target="shopping">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span>提案</span>
+        </button>
+    </nav>
+
     <!-- Login Modal -->
     <div id="login-modal" class="modal-overlay hidden">
         <div class="modal-card card">

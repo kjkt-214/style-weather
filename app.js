@@ -296,6 +296,8 @@ document.querySelectorAll('.nav-links li').forEach(item => {
 
 // Closet Logic
 let editModeItemId = null;
+let closetFilter = 'all';
+let closetSort = 'default';
 
 function isRecentlyWorn(itemId) {
     const threeDaysAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
@@ -307,9 +309,45 @@ function isRecentlyWorn(itemId) {
 
 function renderCloset() {
     const grid = document.getElementById('closet-grid');
+    const statsEl = document.getElementById('closet-stats');
     grid.innerHTML = '';
 
-    inventory.forEach(item => {
+    let displayItems = inventory.filter(item => {
+        if (closetFilter === 'all') return true;
+        return item.category === closetFilter;
+    });
+
+    const sorted = [...displayItems];
+    if (closetSort === 'wears-desc') {
+        sorted.sort((a, b) => getWearCount(b.id) - getWearCount(a.id));
+    } else if (closetSort === 'wears-asc') {
+        sorted.sort((a, b) => getWearCount(a.id) - getWearCount(b.id));
+    } else if (closetSort === 'rating-desc') {
+        sorted.sort((a, b) => {
+            const pa = stylePreferences[String(a.id)];
+            const pb = stylePreferences[String(b.id)];
+            const ra = pa && pa.ratingCount > 0 ? pa.totalScore / pa.ratingCount : 0;
+            const rb = pb && pb.ratingCount > 0 ? pb.totalScore / pb.ratingCount : 0;
+            return rb - ra;
+        });
+    } else if (closetSort === 'formality-asc') {
+        sorted.sort((a, b) => a.formality - b.formality);
+    } else if (closetSort === 'formality-desc') {
+        sorted.sort((a, b) => b.formality - a.formality);
+    }
+
+    if (statsEl) {
+        const total = displayItems.length;
+        const clean = displayItems.filter(i => i.status !== 'laundry').length;
+        const laundry = total - clean;
+        statsEl.innerHTML = `
+            <span class="closet-stat"><i class="fa-solid fa-shirt"></i> ${total}点</span>
+            <span class="closet-stat clean"><i class="fa-solid fa-check"></i> 着用可 ${clean}点</span>
+            ${laundry > 0 ? `<span class="closet-stat laundry"><i class="fa-solid fa-soap"></i> 洗濯中 ${laundry}点</span>` : ''}
+        `;
+    }
+
+    sorted.forEach(item => {
         const div = document.createElement('div');
         
         if (item.id === editModeItemId) {
@@ -482,8 +520,9 @@ document.getElementById('add-cloth-form').addEventListener('submit', (e) => {
 // Generate Outfit Logic
 let currentSuggestedOutfit = [];
 let selectedRating = 0;
+let reshuffleExcludes = { tops: [], bottoms: [], outer: [], shoes: [] };
 
-document.getElementById('generate-btn').addEventListener('click', () => {
+function generateOutfit() {
     let reqWarmth = 2; // default
     let reqFormality = 1; // Default
     const companion = document.getElementById('companion-select').value;
@@ -584,12 +623,15 @@ document.getElementById('generate-btn').addEventListener('click', () => {
     window._lastAIContext = aiContext;
 
     // ---- AI スコアリングで最適アイテムを選択 ----
-    const filterAndPick = (category) => {
+    const filterAndPick = (category, excludeIds = []) => {
         let candidates = inventory.filter(item => item.category === category && item.status !== 'laundry');
         if (candidates.length === 0) return null;
 
+        const nonExcluded = candidates.filter(item => !excludeIds.includes(item.id));
+        const pool = nonExcluded.length > 0 ? nonExcluded : candidates;
+
         // AIスコアを算出してソート
-        candidates = candidates.map(item => {
+        const scored = pool.map(item => {
             // 暖かさマッチ (0-40点)
             const warmthDiff = Math.abs(item.warmth - reqWarmth);
             const warmthScore = warmthDiff === 0 ? 40 : warmthDiff === 1 ? 20 : 0;
@@ -610,30 +652,31 @@ document.getElementById('generate-btn').addEventListener('click', () => {
         });
 
         // スコア降順でソート
-        candidates.sort((a, b) => b._score - a._score);
-        return candidates[0];
+        scored.sort((a, b) => b._score - a._score);
+        return scored[0];
     };
 
     const outfit = [];
     
-    const top = filterAndPick('tops');
+    const top = filterAndPick('tops', reshuffleExcludes.tops);
     if(top) outfit.push(top);
 
-    const bottom = filterAndPick('bottoms');
+    const bottom = filterAndPick('bottoms', reshuffleExcludes.bottoms);
     if(bottom) outfit.push(bottom);
 
     // Outerwear only if cold
     if (reqWarmth > 1) {
-        const outer = filterAndPick('outer');
+        const outer = filterAndPick('outer', reshuffleExcludes.outer);
         if(outer) outfit.push(outer);
     }
 
-    const shoes = filterAndPick('shoes');
+    const shoes = filterAndPick('shoes', reshuffleExcludes.shoes);
     if(shoes) outfit.push(shoes);
 
     if (outfit.length === 0) {
         resultGrid.innerHTML = '<p>手持ちの候補がありません。洗濯を完了するかクローゼットに服を追加してください。</p>';
         document.querySelector('.outfit-actions').classList.add('hidden');
+        document.getElementById('reshuffle-btn').classList.add('hidden');
     } else {
         outfit.forEach(item => {
             const div = document.createElement('div');
@@ -652,11 +695,34 @@ document.getElementById('generate-btn').addEventListener('click', () => {
         resetRatingStars();
         document.getElementById('wear-btn').disabled = true;
         document.querySelector('.outfit-actions').classList.remove('hidden');
+        document.getElementById('reshuffle-btn').classList.remove('hidden');
     }
 
     renderAIStatus();
     resultCard.classList.remove('hidden');
     resultCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+document.getElementById('generate-btn').addEventListener('click', () => {
+    reshuffleExcludes = { tops: [], bottoms: [], outer: [], shoes: [] };
+    generateOutfit();
+});
+
+document.getElementById('reshuffle-btn').addEventListener('click', () => {
+    currentSuggestedOutfit.forEach(item => {
+        if (!reshuffleExcludes[item.category]) reshuffleExcludes[item.category] = [];
+        if (!reshuffleExcludes[item.category].includes(item.id)) {
+            reshuffleExcludes[item.category].push(item.id);
+        }
+    });
+    const reshuffleBtn = document.getElementById('reshuffle-btn');
+    reshuffleBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 切り替え中...';
+    reshuffleBtn.disabled = true;
+    setTimeout(() => {
+        generateOutfit();
+        reshuffleBtn.innerHTML = '<i class="fa-solid fa-shuffle"></i> 再提案';
+        reshuffleBtn.disabled = false;
+    }, 300);
 });
 
 // Rating Stars Handling
@@ -1485,5 +1551,58 @@ function renderScheduleList() {
         extremesEl.classList.remove('hidden');
     }
 }
+
+// ---- クローゼットフィルター・ソート ----
+document.querySelectorAll('#filter-chips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        document.querySelectorAll('#filter-chips .chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        closetFilter = chip.getAttribute('data-filter');
+        renderCloset();
+    });
+});
+
+const closetSortSelect = document.getElementById('closet-sort');
+if (closetSortSelect) {
+    closetSortSelect.addEventListener('change', () => {
+        closetSort = closetSortSelect.value;
+        renderCloset();
+    });
+}
+
+// ---- モバイルボトムナビ ----
+document.querySelectorAll('.bottom-nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const target = item.getAttribute('data-target');
+
+        // デスクトップのサイドバーナビも連動させる
+        document.querySelectorAll('.nav-links li').forEach(li => li.classList.remove('active'));
+        const sidebarItem = document.querySelector(`.nav-links li[data-target="${target}"]`);
+        if (sidebarItem) sidebarItem.classList.add('active');
+
+        // ボトムナビのアクティブ状態
+        document.querySelectorAll('.bottom-nav-item').forEach(btn => btn.classList.remove('active'));
+        item.classList.add('active');
+
+        // セクション切り替え
+        document.querySelectorAll('.view-section').forEach(section => section.classList.remove('active'));
+        document.getElementById(target).classList.add('active');
+
+        // 各ビューのレンダリング
+        if (target === 'closet') renderCloset();
+        if (target === 'shopping') analyzeShopping();
+        if (target === 'history') renderHistoryView();
+    });
+});
+
+// デスクトップナビとボトムナビを連動
+document.querySelectorAll('.nav-links li').forEach(item => {
+    item.addEventListener('click', () => {
+        const target = item.getAttribute('data-target');
+        document.querySelectorAll('.bottom-nav-item').forEach(btn => btn.classList.remove('active'));
+        const bottomItem = document.querySelector(`.bottom-nav-item[data-target="${target}"]`);
+        if (bottomItem) bottomItem.classList.add('active');
+    });
+});
 
 
